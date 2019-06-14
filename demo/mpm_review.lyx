@@ -1,0 +1,4541 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass ctex-article
+\begin_preamble
+%!TEX TS-program = xelatex
+
+\usepackage[super,square,comma,sort&compress]{natbib}
+\end_preamble
+\use_default_options true
+\maintain_unincluded_children false
+\language chinese-simplified
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts true
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format pdf4
+\output_sync 1
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref true
+\pdf_bookmarks true
+\pdf_bookmarksnumbered false
+\pdf_bookmarksopen false
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks false
+\pdf_pdfborder false
+\pdf_colorlinks false
+\pdf_backref false
+\pdf_pdfusetitle true
+\papersize default
+\use_geometry true
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 1
+\use_mathdots 1
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 2cm
+\topmargin 2cm
+\rightmargin 2cm
+\bottommargin 2cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+物质点法的理论及应用
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+国家自然科学基金项目(11272180,11102097)和国家重点基础研究发展计划项目(2010CB832701)资助
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Author
+廉艳平，张帆，刘岩，张雄
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+通讯作者，xzhang@tsinghua.edu.cn
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Address
+\align center
+(清华大学航天航空学院，北京100084)
+\end_layout
+
+\begin_layout Abstract
+物质点法采用质点离散材料区域，用背景网格计算空间导数和求解动量方程，避免了网格畸变和对流项处理，兼具拉格朗日和欧拉算法的优势，非常适合模拟涉及材料特大变形和断裂
+破碎的问题。本文详细论述了物质点法在基本理论、算法和软件开发方面的进展，包括广义插值物质点法、接触算法、自适应算法、并行算法、与其它算法的杂交和耦合等。系统地总
+结了物质点法在超高速碰撞、冲击侵彻、爆炸、动态断裂、流固耦合、多尺度分析、颗粒材料流动和岩土失效等一系列涉及材料特大变形问题中的应用，展示了其相对于传统数值计算
+方法的优势。
+\end_layout
+
+\begin_layout Abstract
+关键字：无网格法，物质点法，冲击侵彻，爆炸，特大变形
+\end_layout
+
+\begin_layout Abstract
+Material point method (MPM) discretizes the material domain by particles,
+ and solves the momentum equations on a predefined background mesh.
+ MPM avoids mesh entanglment and involving convective terms by taking advantages
+ of both Lagrangian and Eulerian methods.
+ So it is very promising in the numerical simulation of problems involving
+ in extreme material deformation and fracture.
+ The state-of-art of the theory, the algorithm development and implemention,
+ and the software development of material point method is reviewed in detail.
+ The generalized material point method, contact algorithm, adaptive algorithm,
+ parallel algorithm, and coupling with other methods are included.
+ Applications of MPM to the problems involving extreme material deformation,
+ such as hypervelocity impact, penetration, explosion, dynamic fracture,
+ fluid-structure interaction, multiscale analysis, and granular material
+ flow and rock and soil failure, are investigated systematically.
+ The applications demonstrate the advantages of MPM over conventional numerical
+ methods.
+ 
+\end_layout
+
+\begin_layout Abstract
+Key words: meshless/meshfree method, material point method, impact and penetrati
+on, explosion, extreme deformation 
+\end_layout
+
+\begin_layout Section
+引言
+\end_layout
+
+\begin_layout Standard
+目前，数值计算方法在科学研究和工程问题中得到了广泛应用
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Belytschko-B2000,zhang-B2007"
+
+\end_inset
+
+，与理论和实验研究组成了现代科学技术的三大支柱
+\begin_inset CommandInset citation
+LatexCommand cite
+key "USA-T2005"
+
+\end_inset
+
+，并具有快捷、安全和低成本的优势。但是，涉及材料特大变形、破碎甚至发生相变的问题给数值计算方法带来了巨大的挑战，例如，冲击侵彻、流固耦合、岩土动力学和爆炸等极端
+载荷工况问题包含了一系列复杂的物理过程，涉及材料、几何和边界条件非线性。传统的数值计算方法，如拉格朗日有限元法、边界元法和欧拉方法，在处理这类问题时常遇到网格畸
+变、界面追踪和对流项处理等困难
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma-PhD2009,Huang-PhD2010,Liu-B2010"
+
+\end_inset
+
+。目前还缺少针对此类问题非常有效的数值计算方法，为此近年来发展的无网格法受到了计算力学领域学者的高度重视
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zhang2009,LiuGR-2003,Belytschko-1996"
+
+\end_inset
+
+。
+\end_layout
+
+\begin_layout Standard
+目前，已有很多种类的无网格法被提出，据不完全统计可达30余种。无网格法的发展最早始于Lucy
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lucy-J1977"
+
+\end_inset
+
+和Gingold、Monaghan
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Gingold-J1977"
+
+\end_inset
+
+在1977年的工作，他们提出了光滑质点流体动力学方法(Smoothed Particle Hybrodynamics，SPH)，以求解天体物理问题。直到20世纪
+90年代中期，计算力学界兴起了对无网格法的研究热潮
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Belytschko-1996"
+
+\end_inset
+
+。无网格法与有限元法的主要区别在于采用无拓扑连接关系的点离散材料区域，并基于离散点构造近似函数，可以彻底或部分地消除对网格的依赖。张雄和刘岩
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zhang-B2004,Zhang2009"
+
+\end_inset
+
+借助于紧支试函数加权余量法对各种无网格法进行了梳理与总结：无网格法采用的加权余量法主要有伽辽金法、配点法、彼得罗夫-伽辽金法、加权最小二乘法和边界积分方程，建立
+试探函数采用的近似函数主要有移动最小二乘法、核近似法、重构核近似法、单位分解法、径向基函数法、点插值法、Sibson插值、非Sibson插值法和NURBS法等。
+因此，各种无网格法的主要区别在于采用了何种权(检验)函数和近似函数。
+\end_layout
+
+\begin_layout Standard
+物质点法(Material Point Method, MPM)是Sulsky和Chen等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sulsky-1994"
+
+\end_inset
+
+于1994年提出的一种数值方法，其渊源可追溯到20世纪50年代末提出的质点网格法(particle-in-cell，PIC)方法。为了求解复杂的流体力学问题，美
+国洛斯阿拉莫斯国家实验室(Los Alamos National Laboratory，LANL)的Harlow及其领导的计算流体动力学小组于
+ 1955 年提出了PIC方法
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Harlow-1964"
+
+\end_inset
+
+。PIC采用拉格朗日和欧拉双重描述，即将材料离散成一组质点，质点仅携带质量和位置信息以便于跟踪材料界面，而在欧拉网格上计算相应的物理量，通过插值函数完成质点与欧
+拉网格之间的信息交互。为了解决质点仅携带质量和位置信息导致PIC方法具有高数值耗散的缺陷，Brackbill和Ruppel等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Brackbill-1986,Brackbill-1988"
+
+\end_inset
+
+在PIC基础上发展了FLIP(Fluid implicit PIC)方法。在FLIP中，质点携带了更多的物理量，如动量和能量等。Sulsky为了将FLIP应用于
+固体力学问题，对FLIP方法进行了如下改进
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sulsky-1994"
+
+\end_inset
+
+：1.
+ 质点携带所有的物质信息，并在质点上进行本构方程计算，以便于处理与历史相关的材料；2.
+ 通过等效积分弱形式，采用质点离散建立动量方程的离散格式；3.
+ 采用显式时间积分。修改后的FLIP方法称为物质点法。与其他无网格法相比，物质点法单步计算与有限元求解类似，并且不需要建立质点的临近质点列表，因此在算法稳定性和
+效率上具有优势
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma-2009"
+
+\end_inset
+
+。
+\end_layout
+
+\begin_layout Standard
+MPM既无需处理对流项又避免了网格畸变问题，非常适合处理涉及材料特大变形的问题。MPM采用携带材料所有信息的物质点离散材料区域，以表征材料区域的运动和变形状态，
+并避免了处理对流项；MPM采用规则的欧拉背景网格计算空间导数和动量方程，从而实现了物质点间的相互作用与联系，并避免了网格畸变问题。因此，MPM同时采用拉格朗日和
+欧拉双重描述，并发挥了两者各自的优势，避免了其缺点。Sulsky和Chen等人首先采用该方法分析了刚体的大转动和弹性体的碰撞问题
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sulsky-1994"
+
+\end_inset
+
+，展现了MPM潜在的优势。此后，MPM受到广泛关注并得到了持续地发展，下面分别从理论、软件开发、应用三个层面对物质点法进行总结与评述。
+\end_layout
+
+\begin_layout Section
+物质点法理论及其扩展
+\end_layout
+
+\begin_layout Subsection
+标准物质点法
+\begin_inset CommandInset label
+LatexCommand label
+name "sub:MPM"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+控制方程及其离散
+\end_layout
+
+\begin_layout Standard
+更新拉格朗日格式的控制方程（不考虑热量交换）为：
+\begin_inset Formula 
+\begin{align}
+ & \text{质量守恒：}\rho(\boldsymbol{X},t)J(\boldsymbol{X},t)=\rho_{0}(\boldsymbol{X})\label{massConv}\\
+ & \text{动量方程：}\sigma_{ij,j}+\rho b_{i}=\rho\ddot{u}_{i}\label{MomentumConv}\\
+ & \text{能量方程：}\rho\dot{w}^{\textrm{int}}=D_{ij}\sigma_{ij}\label{EnergyConv}\\
+ & \text{本}\text{构}\text{关}\text{系}\text{：}\sigma^{\nabla}=\sigma^{\nabla}(D_{ij},\sigma_{ij},\textrm{etc}.)\label{Constitution}\\
+ & \text{几何方程：}\dot{\varepsilon}_{ij}=\frac{1}{2}(v_{i,j}+v_{j,i})\label{StrainDisp}\\
+ & \text{边界条件：}\left\{ \begin{array}{l}
+n_{j}\sigma_{ji}\mid_{\Gamma_{t}}=\overline{t}_{i}\\
+\dot{u}_{i}\mid_{\Gamma_{v}}=\overline{v}_{i}
+\end{array}\right.\label{BoundaryCond}\\
+ & \text{初始条件：}\dot{u}_{i}(\boldsymbol{X},0)=\dot{u}_{0i}(\boldsymbol{X}),\quad u_{i}(\boldsymbol{X},0)=u_{0i}(\boldsymbol{X})\label{InitialCond}
+\end{align}
+
+\end_inset
+
+其中，下标
+\begin_inset Formula $i$
+\end_inset
+
+和
+\begin_inset Formula $j$
+\end_inset
+
+表示空间坐标分量，并遵守Einstein求和约定，下标0表示初始时刻的值；
+\begin_inset Formula $\rho$
+\end_inset
+
+为当前时刻的密度，
+\begin_inset Formula $J$
+\end_inset
+
+为雅克比行列式，
+\begin_inset Formula $b_{i}$
+\end_inset
+
+为体力，
+\begin_inset Formula $\mathit{u_{i}}$
+\end_inset
+
+为位移，
+\begin_inset Formula $w^{\textrm{int}}$
+\end_inset
+
+为单位质量的内能，
+\begin_inset Formula $\sigma_{ij}$
+\end_inset
+
+为柯西应力张量，
+\begin_inset Formula $D_{ij}$
+\end_inset
+
+为变形率张量；
+\begin_inset Formula $\Gamma_{t}$
+\end_inset
+
+和
+\begin_inset Formula $\Gamma_{v}$
+\end_inset
+
+分别表示现时构形中的指定面力边界和速度边界，
+\begin_inset Formula $\overline{t}_{i}$
+\end_inset
+
+和
+\begin_inset Formula $\overline{v}_{i}$
+\end_inset
+
+分别为指定的面力和速度；
+\begin_inset Formula $n_{j}$
+\end_inset
+
+为材料边界的单位外法线方向。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/MPMDiscrete.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+物质点法示意图：(a) 材料区域；(b) 物质点代表区域；(c) 物质点法离散 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "MPMDiscrete"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+物质点法将材料区域离散为一组相对于背景网格运动的质点，如图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "MPMDiscrete"
+
+\end_inset
+
+所示。每个物质点均代表一块材料区域并携带所有物质信息，如质量、速度、应力和应变等，因此所有物质点的集合代表了整个材料区域；背景网格用来计算空间导数和求解动量方程
+。取虚位移
+\begin_inset Formula $\delta u_{i}\in\Re_{0}$
+\end_inset
+
+，
+\begin_inset Formula $\Re_{0}=\{\delta u_{i}\mid\delta u_{i}\in C^{0},\delta u_{i}\mid_{\Gamma_{u}}=0\}$
+\end_inset
+
+作为权函数，可得动量方程
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "MomentumConv"
+
+\end_inset
+
+和给定面力边界条件
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "BoundaryCond"
+
+\end_inset
+
+的等效积分弱形式（虚功方程）为
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\int_{V}\delta u_{i}\rho\ddot{u}_{i}dV+\int_{V}\delta u_{i,j}\sigma_{ij}dV-\int_{V}\delta u_{i}\rho b_{i}dV-\int_{\Gamma_{t}}\delta u_{i}\overline{t}_{i}d\Gamma=0\label{WeakForm0}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+物质点法将材料区域离散为一组物质点，因此材料的密度
+\begin_inset Formula $\rho$
+\end_inset
+
+可近似为
+\begin_inset Formula 
+\begin{equation}
+\rho(x_{i})=\sum\limits _{p=1}^{n_{p}}m_{p}\delta(x_{i}-x_{ip})\label{MPMdensity}
+\end{equation}
+
+\end_inset
+
+其中，
+\begin_inset Formula $n_{p}$
+\end_inset
+
+表示物质点总数，
+\begin_inset Formula $m_{p}$
+\end_inset
+
+表示物质点所代表区域的质量，
+\begin_inset Formula $\delta$
+\end_inset
+
+为Dirac函数，
+\begin_inset Formula $x_{ip}$
+\end_inset
+
+是质点
+\begin_inset Formula $p$
+\end_inset
+
+的坐标。
+\end_layout
+
+\begin_layout Standard
+为了公式推导上的方便，在公式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "WeakForm0"
+
+\end_inset
+
+中引入比应力
+\begin_inset Formula $\sigma_{ij}^{s}=\sigma_{ij}/\rho$
+\end_inset
+
+和比边界面力
+\begin_inset Formula $\bar{t}_{i}^{s}=\bar{t}_{i}/\rho$
+\end_inset
+
+，有
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\int_{V}\delta u_{i}\rho\ddot{u}_{i}dV+\int_{V}\delta u_{i,j}\rho\sigma_{ij}^{s}dV-\int_{V}\delta u_{i}\rho b_{i}dV-\int_{\Gamma_{t}}\delta u_{i}\rho\overline{t}_{i}^{s}d\Gamma=0\label{weakForm}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+将式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "MPMdensity"
+
+\end_inset
+
+代入虚功方程
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "weakForm"
+
+\end_inset
+
+中，可将虚功方程转化为求和的形式： 
+\begin_inset Formula 
+\begin{equation}
+\sum_{p=1}^{n_{p}}m_{p}\ddot{u}_{ip}\delta u_{ip}+\sum_{p=1}^{n_{p}}m_{p}\sigma_{ijp}^{s}\delta u_{ip,j}-\sum_{p=1}^{n_{p}}m_{p}b_{ip}\delta u_{ip}-\sum_{p=1}^{n_{p}}m_{p}\bar{t}_{ip}^{s}h^{-1}\delta u_{ip}=0\label{Eq-pi-1}
+\end{equation}
+
+\end_inset
+
+其中
+\begin_inset Formula $u_{ip}=u_{i}(\boldsymbol{x}_{p})$
+\end_inset
+
+，
+\begin_inset Formula $\delta u_{ip,j}=\delta u_{i,j}(\boldsymbol{x}_{p})$
+\end_inset
+
+，
+\begin_inset Formula $\sigma_{ijp}^{s}=\sigma_{ij}^{s}(\boldsymbol{x}_{p})$
+\end_inset
+
+，
+\begin_inset Formula $b_{ip}=b_{i}(\boldsymbol{x}_{p})$
+\end_inset
+
+，
+\begin_inset Formula $\bar{t}_{ip}^{s}=\bar{t}_{i}^{s}(\boldsymbol{x}_{p})$
+\end_inset
+
+，
+\begin_inset Formula $h$
+\end_inset
+
+是为了将式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "weakForm"
+
+\end_inset
+
+左端最后一项边界积分转化为体积分而引入的假想边界层厚度。由式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "Eq-pi-1"
+
+\end_inset
+
+可见，物质点法将式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "weakForm"
+
+\end_inset
+
+中的各项积分转化为被积函数在各物质点处的值与该物质点所代表的体积之积的和，即采用了物质点积分。
+\end_layout
+
+\begin_layout Standard
+在求解动量方程时，质点和计算网格完全固连，随计算网格一起运动，因此可通过建立在计算网格结点上的有限元形函数
+\begin_inset Formula $N_{I}(x_{i})$
+\end_inset
+
+来实现质点和计算网格结点之间信息的映射。下面用带有下标
+\begin_inset Formula $I$
+\end_inset
+
+的量来表示网格结点的变量，用带有下标
+\begin_inset Formula $p$
+\end_inset
+
+的量来表示质点携带的变量，则质点
+\begin_inset Formula $p$
+\end_inset
+
+的位移
+\begin_inset Formula $u_{ip}$
+\end_inset
+
+可以由计算网格结点的位移
+\begin_inset Formula $u_{iI}$
+\end_inset
+
+插值而得到，即
+\begin_inset Formula 
+\begin{equation}
+u_{ip}=\sum\limits _{I=1}^{n_{g}}N_{Ip}u_{iI}\label{approxmateFunction}
+\end{equation}
+
+\end_inset
+
+其中
+\begin_inset Formula $N_{Ip}=N_{I}(\boldsymbol{x}_{p})$
+\end_inset
+
+为结点
+\begin_inset Formula $I$
+\end_inset
+
+的形函数在质点
+\begin_inset Formula $p$
+\end_inset
+
+处的值，
+\begin_inset Formula $n_{g}$
+\end_inset
+
+为计算网格的结点总数。如果采用正六面体计算网格，则结点
+\begin_inset Formula $I$
+\end_inset
+
+的形函数为： 
+\begin_inset Formula 
+\begin{equation}
+N_{I}=\frac{1}{8}(1+\xi\xi_{I})(1+\eta\eta_{I})(1+\zeta\zeta_{I}),\quad I=1,2,\cdots8\label{Eq-shape}
+\end{equation}
+
+\end_inset
+
+其中
+\begin_inset Formula $\xi_{I}$
+\end_inset
+
+，
+\begin_inset Formula $\eta_{I}$
+\end_inset
+
+和
+\begin_inset Formula $\zeta_{I}$
+\end_inset
+
+为结点
+\begin_inset Formula $I$
+\end_inset
+
+在母单元对应的结点自然坐标，其取值分别为
+\begin_inset Formula $\pm1$
+\end_inset
+
+。如果点(
+\begin_inset Formula $\xi,\:\eta,\:\zeta$
+\end_inset
+
+)位于六面体外，则
+\begin_inset Formula $N_{I}=0$
+\end_inset
+
+。由于有限元形函数
+\begin_inset Formula $N_{I}$
+\end_inset
+
+具有紧支性，式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "approxmateFunction"
+
+\end_inset
+
+只需对质点
+\begin_inset Formula $\boldsymbol{x}_{p}$
+\end_inset
+
+所在单元的顶点求和即可。
+\end_layout
+
+\begin_layout Standard
+同理，质点
+\begin_inset Formula $p$
+\end_inset
+
+的虚位移可近似表示为
+\begin_inset Formula 
+\begin{equation}
+\delta u_{ip}=\sum\limits _{I=1}^{n_{g}}N_{Ip}\delta u_{iI}\label{virtualDis}
+\end{equation}
+
+\end_inset
+
+其中
+\begin_inset Formula $\delta u_{iI}$
+\end_inset
+
+表示背景网格结点
+\begin_inset Formula $I$
+\end_inset
+
+的虚位移。将式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "approxmateFunction"
+
+\end_inset
+
+和
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "virtualDis"
+
+\end_inset
+
+代入弱形式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "Eq-pi-1"
+
+\end_inset
+
+中，并考虑到虚位移
+\begin_inset Formula $\delta u_{iI}$
+\end_inset
+
+在本质边界
+\begin_inset Formula $\Gamma_{v}$
+\end_inset
+
+上为零，在其余各点处任意，可得到背景网格结点的运动方程
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\dot{p}_{iI}=f_{iI}^{\textrm{ext}}+f_{iI}^{\textrm{int}}\quad I\notin\Gamma_{v}\label{MomentumEq-1}
+\end{equation}
+
+\end_inset
+
+其中 
+\begin_inset Formula 
+\begin{equation}
+p_{iI}=\sum\limits _{J=1}^{n_{g}}m_{IJ}\dot{u}_{iJ}\label{Eq-2-p1}
+\end{equation}
+
+\end_inset
+
+ 是第
+\begin_inset Formula $I$
+\end_inset
+
+个网格结点在
+\begin_inset Formula $i$
+\end_inset
+
+方向的动量， 
+\begin_inset Formula 
+\begin{equation}
+m_{IJ}=\sum\limits _{p=1}^{n_{p}}m_{p}N_{Ip}N_{Jp}\label{Eq-2-p1-1}
+\end{equation}
+
+\end_inset
+
+ 是计算网格的质量矩阵，
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+f_{iI}^{\textrm{int}}=-\sum\limits _{p=1}^{n_{p}}N_{Ip,j}\sigma_{ijp}\frac{m_{p}}{\rho_{p}}\label{int-1-1}
+\end{equation}
+
+\end_inset
+
+和
+\begin_inset Formula 
+\begin{eqnarray}
+f_{iI}^{\textrm{ext}} & = & \sum\limits _{p=1}^{n_{p}}m_{p}N_{Ip}b_{i}+\sum\limits _{p=1}^{n_{p}}N_{Ip}h^{-1}\overline{t}_{i}\frac{m_{p}}{\rho_{p}}\label{ext-1-1}
+\end{eqnarray}
+
+\end_inset
+
+分别是结点内力和结点外力。
+\begin_inset Formula $\sigma_{ijp}=\sigma_{ij}(\boldsymbol{x}_{p})$
+\end_inset
+
+为质点
+\begin_inset Formula $p$
+\end_inset
+
+的应力，它可以利用本构方程计算得到。
+\end_layout
+
+\begin_layout Standard
+在MPM中，动量方程在背景网格结点上求解，因此需要建立背景网格单元的质量阵
+\begin_inset Formula $m_{IJ}$
+\end_inset
+
+。Love和Sulsky
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Love-2006"
+
+\end_inset
+
+分析了质量阵形式对能量和动量守恒性的影响，结果表明协调质量阵有较好的能量和动量守恒性；Tan和Nairn
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Tan-J2002"
+
+\end_inset
+
+在计算裂纹尖端的能量释放率时也指出协调质量阵能够获得更好的能量守恒性质。质量阵的各元素
+\begin_inset Formula $m_{IJ}$
+\end_inset
+
+和时间相关，需在每一个时间步中重新计算。因此，可采用集中质量阵以提高计算效率，即取
+\begin_inset Formula 
+\begin{equation}
+m_{I}=\sum\limits _{J=1}^{n_{g}}\sum\limits _{p=1}^{n_{p}}m_{p}N_{Ip}N_{Jp}=\sum\limits _{p=1}^{n_{p}}m_{p}N_{Ip}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+采用集中质量阵后，动量
+\begin_inset Formula $p_{iI}$
+\end_inset
+
+可简化成 
+\begin_inset Formula 
+\begin{equation}
+p_{iI}=m_{I}\dot{u}_{iI}\label{Eq-2-p2}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+采用中心差分法
+\begin_inset CommandInset citation
+LatexCommand cite
+key "zhang-B2007"
+
+\end_inset
+
+求解背景网格结点动量方程式(
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "MomentumEq-1"
+
+\end_inset
+
+)，可得
+\begin_inset Formula $t^{n+1/2}$
+\end_inset
+
+时刻的背景网格结点动量为
+\begin_inset Formula 
+\begin{equation}
+p_{iI}^{n+1/2}=p_{iI}^{n-1/2}+(f_{iI}^{n,\textrm{int}}+f_{iI}^{n,\textrm{ext}})\Delta t^{n}
+\end{equation}
+
+\end_inset
+
+其中
+\begin_inset Formula $\Delta t^{n}=t^{n+1/2}-t^{n-1/2}$
+\end_inset
+
+。通过背景网格形函数将积分结果映射回物质点以更新物质点的位置和速度，即分别利用背景网格的加速度场和速度场更新质点的速度和位置，有
+\begin_inset Formula 
+\begin{equation}
+v_{ip}^{n+1/2}=v_{ip}^{n-1/2}+\Delta t^{n}\sum\limits _{I=1}^{n_{g}}N_{Ip}(f_{iI}^{n,\textrm{int}}+f_{iI}^{n,\textrm{ext}})/m_{I}
+\end{equation}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{equation}
+x_{ip}^{n+1}=x_{ip}^{n}+\Delta t^{n+1/2}\sum\limits _{I=1}^{n_{g}}N_{Ip}p_{iI}^{n+1/2}/m_{I}
+\end{equation}
+
+\end_inset
+
+其中
+\begin_inset Formula $t^{n+1\text{/2}}=(t^{n+1}+t^{n-1}$
+\end_inset
+
+)/2，
+\begin_inset Formula $\Delta t^{n+1\text{/2}}=t^{n+1}-t^{n}$
+\end_inset
+
+。中心差分法为显式积分算法，其积分步长受CFL条件的限制，适合于求解瞬态动力学问题。针对准静态和结构动力学问题，为了提高计算效率，Cummins和Brackbi
+ll
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Cummins-J2002_implicitMPM"
+
+\end_inset
+
+、Sulsky等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sulsky-2004"
+
+\end_inset
+
+研究了物质点法的隐式积分算法，采用迭代方法求解动量方程组，不需显式组装切线刚度矩阵，节省了存储量；Guilkey和Weiss
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Guilkey-J2003_implicitMPM"
+
+\end_inset
+
+采用直接解法求解动量方程组，提出了需显式组装切线刚度矩阵的隐式积分方法。
+\end_layout
+
+\begin_layout Subsubsection
+计算格式
+\begin_inset CommandInset label
+LatexCommand label
+name "SecImplementation"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+物质点法的求解步骤可分为：
+\end_layout
+
+\begin_layout Standard
+(1) 定义背景网格，将所有质点的质量、动量映射到背景网格结点上；
+\end_layout
+
+\begin_layout Standard
+(2) 采用背景网格速度场计算质点应变并更新其应力；
+\end_layout
+
+\begin_layout Standard
+(3) 利用物质点积分获得背景网格结点的结点力，在背景网格上积分动量方程；
+\end_layout
+
+\begin_layout Standard
+(4) 分别采用背景网格结点的速度场和加速度场更新物质点的位置和速度；
+\end_layout
+
+\begin_layout Standard
+(5) 丢弃已经变形的背景网格。
+\end_layout
+
+\begin_layout Standard
+其中应力更新可以在第（3）步之前进行，也可以在之后进行。Bardenhagen将上述两种更新格式分别称为USF (Update Stress First)
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-J2002_error,Nairn-CMES-2003"
+
+\end_inset
+
+和USL (Update Stress Last)。此外，还有一种改进的USL格式称为MUSL
+\begin_inset space ~
+\end_inset
+
+(Modified Update Stress Last)
+\begin_inset space ~
+\end_inset
+
+格式，它不直接利用更新的结点动量来计算结点速度，而是将更新的质点动量映射回背景网格后重新计算结点速度。应力更新时先要基于速度场计算应变率，因此各种格式的主要差异
+在于采用不同的结点速度来计算应变率。在一个时间步中，采用不同的结点速度场计算应变率便会得到不同的计算格式。三种计算格式计算流程如图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "MPMvsFEM"
+
+\end_inset
+
+所示，使用的背景网格结点速度场分别如下：
+\end_layout
+
+\begin_layout Standard
+(1) 在
+\begin_inset space ~
+\end_inset
+
+USF
+\begin_inset space ~
+\end_inset
+
+格式中，利用更新前的结点动量
+\begin_inset Formula $p_{iI}^{n-1/2}$
+\end_inset
+
+来计算结点速度
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-J2002_error"
+
+\end_inset
+
+，即
+\begin_inset Formula 
+\begin{equation}
+v_{iI}^{n-1/2}=p_{iI}^{n-1/2}/m_{I}^{n}=\sum_{p=1}^{n_{p}}m_{p}v_{ip}^{n-1/2}N_{Ip}^{n}/m_{I}^{n}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+(2) 在USL格式中，利用更新后的结点动量
+\begin_inset Formula $p_{iI}^{n+1/2}$
+\end_inset
+
+来计算结点速度
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sulsky-1994"
+
+\end_inset
+
+，即
+\begin_inset Formula 
+\begin{equation}
+v_{iI}^{n+1/2}=p_{iI}^{n+1/2}/m_{I}^{n}
+\end{equation}
+
+\end_inset
+
+。
+\end_layout
+
+\begin_layout Standard
+(3) 在MUSL格式中，将更新后的质点动量
+\begin_inset Formula $p_{ip}^{n+1/2}$
+\end_inset
+
+映射到背景网格后再次计算结点的速度
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sulsky-1995"
+
+\end_inset
+
+，即
+\begin_inset Formula 
+\begin{equation}
+v_{iI}^{n+1/2}=\sum_{p=1}^{n_{p}}m_{p}v_{ip}^{n+1/2}N_{Ip}^{n}/m_{I}^{n}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Bardenhagen
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-J2002_error"
+
+\end_inset
+
+和Nairn
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Nairn-CMES-2003"
+
+\end_inset
+
+的研究表明，USL具有较强的数值耗散和不稳定性，而USF和MUSL具有较好的能量守恒性。Wallstedt和Guilkey
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Wallstedt-2007"
+
+\end_inset
+
+分析了质点速度插值获得背景网格速度场的误差问题，指出该误差受背景网格结点间距和质点间距的影响，并建议让质点同时携带速度梯度信息与速度一起外插到背景网格结点上以降
+低误差。Steffen和Kirby等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Steffen-J2010"
+
+\end_inset
+
+通过设计简单的算例对MPM中存在的误差进行分析，指出质点跨越网格时导致物理量间断引起的误差是时间步长的二阶小量。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/MPMFlowChart.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+物质点法与显式有限元计算流程比较
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "MPMvsFEM"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection
+与有限元法比较
+\end_layout
+
+\begin_layout Standard
+从图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "MPMvsFEM"
+
+\end_inset
+
+中可看出在单个时间步内物质点法和拉格朗日有限元法非常相似，它们的主要区别在于： 
+\end_layout
+
+\begin_layout Standard
+（1）有限元法采用高斯积分，它将积分转化为被积函数在各高斯点处的值与该高斯点的权重及其所代表的体积之积的和；物质点法采用物质点积分，它将积分转化为被积函数在各物
+质点处的值与该物质点所代表的体积之积的和。 
+\end_layout
+
+\begin_layout Standard
+（2）拉格朗日有限元法的计算网格始终与物体固连，而物质点法的计算网格只在每个时间步内和物体固连，在每个时间步结束时，丢弃已经变形的计算网格；由于物质点已经携带了
+物体的所有物质信息，在下一个时刻，可以通过将物质点的信息映射到新计算网格上来求得网格的信息，因此在物质点法中不需要记录各时刻网格结点的任何信息。
+\end_layout
+
+\begin_layout Standard
+下面分别从计算效率和计算精度对两种方法进行定性比较：
+\end_layout
+
+\begin_layout Standard
+算法的计算效率取决于单步内的计算量和时间步长。图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "MPMvsFEM"
+
+\end_inset
+
+给出了物质点法和有限元法的计算流程。对比图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "MPMvsFEM"
+
+\end_inset
+
+可知，物质点法的USF格式和MUSL分别比有限元法多2个和3个计算步骤。此外，物质点法采用物质点积分，平均每个背景网格内具有4个(二维问题)或者8个(三维问题)
+物质点；而有限元法采用单点高斯积分。因此，物质点法单步内的计算量远大于有限元法，效率低于有限元法。但是计算临界时间步长时，物质点法的特征长度为背景网格结点间距，
+在计算过程中不会改变；而有限元法的单元特征长度随着单元的变形发生改变，通常是变小。在声速计算上，两者没有差异。因此，有限元法时间步长小于物质点法，总的计算步数大
+于物质点法。对于小变形问题，有限元法的单元特征长度变化小不会导致时间步长过小，因此有限元法的整体计算效率将高于物质点法；而对于特大变形问题，有限元法的单元畸变将
+导致时间步长过小，大幅度地增加计算步数，因此有限元法整体计算效率低于物质点法。
+\end_layout
+
+\begin_layout Standard
+物质点法和有限元法均采用网格离散并在网格上积分动量方程。当背景网格结点间距和单元尺寸一致时，两者在精度上的差异取决于积分方案和对大变形的处理方式。物质点法和有限
+元法均采用多项式近似函数，而有限元法采用高斯积分可以保证精确积分，而物质点法采用的物质点积分并非高斯积分。因此，物质点法的积分方案精度不如有限元法，且存在质点穿
+越网格引起的数值噪音。但是，在处理材料大变形时，有限元法存在网格畸变问题。一旦单元发生畸变，网格的Jacobian矩阵的行列式值趋近于零，导致计算精度下降，其精
+度将低于物质点法。此外，网格畸变到一定程度将导致有限元法计算意外终止。为解决该问题，有限元法采用侵蚀算法，即将变形较大的单元删除。但是，删除单元将导致系统的质量
+不守恒，同时也对压力计算带来扰动。另外一种解决方法为网格重划分，但网格重划分需要对历史变量重分配，这将导致历史信息的丢失，同时计算代价昂贵。因此，对于小变形问题
+，物质点法的计算精度不如有限元法；对于材料特大变形问题，物质点法的精度高于有限元法。
+\end_layout
+
+\begin_layout Standard
+综上所述，物质点法可以看成是采用质点积分且在每个时间步中都进行网格重划分的特殊拉格朗日有限元法。由于高斯积分可以对多项式被积函数进行精确积分，而物质点积分一般则
+不能，因此对于小变形问题物质点法的精度低于拉格朗日有限元法的精度，其误差主要来源于物质点积分的误差。但对于特大变形问题，拉格朗日有限元法则会由于网格畸变导致精度
+降低并产生数值求解困难，导致计算效率和精度均低于物质点法。
+\end_layout
+
+\begin_layout Subsection
+广义插值物质点法
+\begin_inset CommandInset label
+LatexCommand label
+name "sub:GIMP"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+为了解决标准MPM中质点穿越网格引起的数值噪音，Bardenhagen和Kober
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-2004"
+
+\end_inset
+
+采用彼得洛夫­伽辽金法对MPM进行推广，提出了广义插值物质点法( generalized interpolaiton material point
+ method, GIMP)
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-2004"
+
+\end_inset
+
+。物质点法将物体离散为一组离散质点，且采用具有线性形函数的计算网格。由于形函数导数在背景网格结点处不连续，质点穿越背景网格单元边界时易产生数值噪音，导致应力震荡
+。Bardenhagen和Kober
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-2004"
+
+\end_inset
+
+在GIMP中建立了一族具有
+\begin_inset Formula $C_{1}$
+\end_inset
+
+连续性的形函数，有效地减弱了数值噪音。
+\end_layout
+
+\begin_layout Standard
+建立控制方程的等效积分弱形式时，GIMP采用的检验函数和试探函数取自不同的函数空间。检验函数取为计算网格形函数
+\begin_inset Formula $N_{I}(\boldsymbol{x})$
+\end_inset
+
+，以近似虚位移场
+\begin_inset Formula $\delta u_{i}$
+\end_inset
+
+，即取
+\begin_inset Formula 
+\begin{equation}
+\delta u_{i}=\sum_{I}\delta u_{iI}N_{I}(\boldsymbol{x})\label{eq:GIMP-5}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+试探函数取为质点的所占据空间的体积分数，称为特征函数
+\begin_inset Formula $\chi_{p}(\boldsymbol{x})$
+\end_inset
+
+，以建立近似函数。该特征函数
+\begin_inset Formula $\chi_{p}(\boldsymbol{x})$
+\end_inset
+
+是质点当前位置和变形状态的函数，确定了质点的影响范围，并且满足单位分解条件，即
+\begin_inset Formula 
+\begin{equation}
+\sum_{p}^{n_{p}}\chi_{p}(x)=1
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+物理量
+\begin_inset Formula $f(\boldsymbol{x})$
+\end_inset
+
+可以用其在质点处的值
+\begin_inset Formula $f_{p}$
+\end_inset
+
+近似为 
+\begin_inset Formula 
+\begin{equation}
+f(\boldsymbol{x})=\sum_{p}f_{p}\chi_{p}(\boldsymbol{x})\label{eq:GIMP-3}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+可见，特征函数
+\begin_inset Formula $\chi_{p}(\boldsymbol{x})$
+\end_inset
+
+将质点
+\begin_inset Formula $p$
+\end_inset
+
+的物理量映射到质点区域所覆盖的背景网格区域，并确定了物理量在空间变化的光滑程度。材料的密度
+\begin_inset Formula $\rho$
+\end_inset
+
+、应力
+\begin_inset Formula $\sigma_{ij}$
+\end_inset
+
+和加速度
+\begin_inset Formula $\ddot{u}_{i}$
+\end_inset
+
+都可以用质点的特征函数近似为式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:GIMP-3"
+
+\end_inset
+
+的形式。
+\end_layout
+
+\begin_layout Standard
+将式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:GIMP-3"
+
+\end_inset
+
+和
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "eq:GIMP-5"
+
+\end_inset
+
+代入弱形式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "weakForm"
+
+\end_inset
+
+中，并考虑到
+\begin_inset Formula $\delta u_{iI}$
+\end_inset
+
+的任意性，可得到形式上与式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "MomentumEq-1"
+
+\end_inset
+
+~
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "ext-1-1"
+
+\end_inset
+
+完全相同的格式，但其中的形函数
+\begin_inset Formula $N_{Ip}$
+\end_inset
+
+需替换为
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+S_{Ip}=\frac{1}{V_{p}}\int_{\Omega_{p}\cap\Omega}\chi_{p}(x)N_{I}(x)d\Omega\label{MSShape}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+与MPM形函数
+\begin_inset Formula $N_{I}$
+\end_inset
+
+相比，GIMP形函数
+\begin_inset Formula $S_{I}$
+\end_inset
+
+具有更大的支撑域，且更光滑。若取
+\begin_inset Formula $\chi_{p}(x)=\delta(x-x_{p})V_{p}$
+\end_inset
+
+，则有
+\begin_inset Formula $S_{Ip}=N_{I}(\boldsymbol{x}_{p})$
+\end_inset
+
+，
+\begin_inset Formula $S_{Ip,j}=N_{I,j}(\boldsymbol{x}_{p})$
+\end_inset
+
+，GIMP就退化为标准的MPM。
+\end_layout
+
+\begin_layout Standard
+由式
+\begin_inset CommandInset ref
+LatexCommand eqref
+reference "MSShape"
+
+\end_inset
+
+可知，选取不同的质点特征函数和计算网格形函数可以得到不同的GIMP形函数。计算网格形函数一般可取线性函数，而质点特征函数可取为
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\chi_{p}(x)=\begin{cases}
+1 & x\in\Omega_{p}\\
+0 & x\notin\Omega_{p}
+\end{cases}\label{eq:GIMP-18}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+在GIMP中，计算形函数
+\begin_inset Formula $S_{Ip}$
+\end_inset
+
+时需要在质点
+\begin_inset Formula $p$
+\end_inset
+
+所占据的区域
+\begin_inset Formula $\text{\Omega}_{p}$
+\end_inset
+
+上积分，而该区域是不断变化的。依据是否追踪该变化，GIMP又分为cpGIMP法（contiguous particle GIMP）
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Wallstedt-J2008"
+
+\end_inset
+
+和uGIMP（uniform GIMP）两种。其中，cpGIMP追踪质点区域的变化，即将物体离散为一组互不重叠且相互连接的质点。在一维情况下，质点的特征函数为
+\begin_inset Formula 
+\begin{equation}
+\chi_{p}(x)=H(x-(x_{p}-l_{p}))-H(x-(x_{p}+l_{p}))\label{eq:GIMP-17}
+\end{equation}
+
+\end_inset
+
+其中
+\begin_inset Formula $H(x)$
+\end_inset
+
+是阶跃函数，
+\begin_inset Formula $2l_{p}$
+\end_inset
+
+为质点的长度，它在质点的运动过程中不断变化，质点的初始尺寸等于计算网格格子长度
+\begin_inset Formula $L$
+\end_inset
+
+除以每格子中的质点数。
+\begin_inset Formula $t^{n}$
+\end_inset
+
+时刻质点
+\begin_inset Formula $p$
+\end_inset
+
+的尺寸
+\begin_inset Formula $l_{p}^{n}$
+\end_inset
+
+可以利用变形梯度直接求得，即
+\begin_inset Formula 
+\begin{equation}
+l_{p}^{n}=F_{p}^{n}l_{p}^{0}\label{eq:GIMP-20-2}
+\end{equation}
+
+\end_inset
+
+其中
+\begin_inset Formula $F_{p}^{n}$
+\end_inset
+
+为
+\begin_inset Formula $t^{n}$
+\end_inset
+
+时刻质点
+\begin_inset Formula $p$
+\end_inset
+
+的变形梯度，
+\begin_inset Formula $l_{p}^{0}$
+\end_inset
+
+是质点
+\begin_inset Formula $p$
+\end_inset
+
+的初始长度。对于多维问题，质点
+\begin_inset Formula $p$
+\end_inset
+
+在各方向上的尺寸
+\begin_inset Formula $l_{ip}^{n}$
+\end_inset
+
+可以近似为
+\begin_inset Formula 
+\begin{equation}
+l_{ip}^{n}=\boldsymbol{F}_{iip}^{n}l_{ip}^{0}\label{eq:GIMP-20-3}
+\end{equation}
+
+\end_inset
+
+式中
+\begin_inset Formula $\boldsymbol{F}_{iip}^{n}$
+\end_inset
+
+为
+\begin_inset Formula $t^{n}$
+\end_inset
+
+时刻质点
+\begin_inset Formula $p$
+\end_inset
+
+的变形梯度张量
+\begin_inset Formula $\boldsymbol{F}$
+\end_inset
+
+的第
+\begin_inset Formula $i$
+\end_inset
+
+个对角元。这里相当于假设初始时质点所占据的区域为平行于背景网格的长方体，且在运动过程中仍然保持为平行于背景网格的长方体，即忽略了剪切变形和刚体转动。cpGIMP
+可有效控制数值噪音，但每个时间步需要实时计算物质点的
+\begin_inset Formula $l_{p}$
+\end_inset
+
+以确定该物质点的影响范围，并且形函数比较复杂，显著增加了物质点法的计算量。此外，该类形函数不再具有插值特性，给本质边界条件的施加带来了一定的影响。
+\end_layout
+
+\begin_layout Standard
+uGIMP则不需追踪质点区域的变化，认为质点的大小在整个求解过程中保持不变，即
+\begin_inset Formula $l_{p}$
+\end_inset
+
+不变。假设初始时质点所占据的区域为平行于背景网格的长方体，如果初始每个格子中每个方向有2个质点，则有
+\begin_inset Formula $l_{p}=L/4$
+\end_inset
+
+。图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "ShapeFunction"
+
+\end_inset
+
+给出了一维情况uGIMP和标准MPM的形函数，对比可知前者较后者光滑。但在变形较大的情况下，质点特征函数的支撑域将相互重叠或相互间存在间隙，此时质点特征函数也将
+不再满足单位分解条件，因此uGIMP不能完全消除质点跨越网格所产生的数值噪音。uGIMP虽然不需更新
+\begin_inset Formula $l_{p}$
+\end_inset
+
+，但质点的影响域仍大于标准MPM，导致计算量显著大于标准MPM。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/GIMP-shape.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+典型的GIMP、MPM一维形函数
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "ShapeFunction"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Sadeghirad和Brannon
+\color red
+
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sadeghirad2011"
+
+\end_inset
+
+
+\color inherit
+提出将质点所占据的区域近似为平行六面体，其三条边通过物质点的变形梯度求出，即
+\begin_inset Formula 
+\begin{equation}
+\boldsymbol{r}_{1}^{n}=\boldsymbol{F}_{p}^{n}\boldsymbol{r}_{1}^{0},\quad\boldsymbol{r}_{2}^{n}=\boldsymbol{F}_{p}^{n}\boldsymbol{r}_{2}^{0},\quad\boldsymbol{r}_{3}^{n}=\boldsymbol{F}_{p}^{n}\boldsymbol{r}_{3}^{0}
+\end{equation}
+
+\end_inset
+
+式中（
+\begin_inset Formula $\boldsymbol{r}_{1}^{0},\boldsymbol{r}_{2}^{0},\boldsymbol{r}_{3}^{0}$
+\end_inset
+
+）和（
+\begin_inset Formula $\boldsymbol{r}_{1}^{n},\boldsymbol{r}_{2}^{n},\boldsymbol{r}_{3}^{n}$
+\end_inset
+
+）分别在初始构形和现时构形中定义了质点所占据的平行六面体。此方法称为CPDI（Convected Particle Domain Interpolation）。
+\end_layout
+
+\begin_layout Standard
+此外，Zhang和Ma等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "ZhangDZ-J2011"
+
+\end_inset
+
+通过将标准物质点的形函数导数值与FLIP中基于背景网格结点的形函数导数值加权平均建立了一种新的形函数导数计算方式，以降低质点穿越网格引起的噪音。该方法不需要跟踪
+计算质点的形状，并且质点仅影响其所在的单元，因此便于非结构化背景网格的计算。Htike和Chen等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Htike-J2011"
+
+\end_inset
+
+采用径向基函数(radial basis function, RBF)建立了高度光滑的MPM形函数，模拟了悬臂梁剪应力的分布情况。
+\end_layout
+
+\begin_layout Subsection
+边界条件
+\begin_inset CommandInset label
+LatexCommand label
+name "sub:bc"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+在物质点法中，动量方程在背景网格上建立并求解，易于施加本质边界条件和面力条件。质点的位置和速度更新分别通过背景网格结点的速度场和加速度场更新，因此在背景网格上施
+加边界条件；背景网格结点外力是从质点携带的外力映射而得，因此可通过给位于边界上的质点上施加等效的外力来近似实现面力条件。为了准确施加本质边界条件，需要背景网格的
+边界线或面与物体的边界平行。
+\end_layout
+
+\begin_layout Standard
+
+\color black
+通过强制背景网格的结点动量和加速度施加边界条件。对于固定边界条件，强制背景网格相应的结点在三个坐标轴方向动量分量、加速度分量均为零；对于对称边界条件，强制背景网
+格相应的结点在约束的方向上动量和加速度为零；对于自由边界条件，则不做任何修改。举例说明，如图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "BCflag"
+
+\end_inset
+
+所示，其中最右侧实线网格的区域为标准MPM的边界，依据具体的边界条件设定计算域边界背景网格结点的动量和加速度值。此外，由于GIMP中质点的影响域并非仅限于其所在
+的背景网格，即质点信息映射到的背景网格结点比标准MPM最多多出一列结点。为了保证此处的变形协调，需要把图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "BCflag"
+
+\end_inset
+
+中最右侧的“外部虚结点”动量和加速度做相应设置。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/MPM_GIMP_BC.eps
+	BoundingBox 0bp 0bp 167bp 127bp
+
+\end_inset
+
+
+\begin_inset Caption
+
+\begin_layout Plain Layout
+边界条件的施加
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "BCflag"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+在等效施加面力边界条件时，由于质点会相对于背景网格移动，因此需在最外层边界质点上施加等效的面力载荷。
+\color black
+此外，Shen和Chen
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Shen-2005"
+
+\end_inset
+
+
+\color inherit
+将Lysmer和Kuhlemeyer
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lysmer-1969"
+
+\end_inset
+
+给出的可有效吸收纵波和横波的边界力计算公式在物质点法框架下实，根据圣维南原理将无反射边界上的面力等效为作用在最外层网格上的质量力实现无反射边界条件。
+\end_layout
+
+\begin_layout Subsection
+接触算法
+\begin_inset CommandInset label
+LatexCommand label
+name "sub:contact"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+在MPM中，质点和背景网格之间采用单值映射函数，因此自然地满足了物体间非穿透条件。对于无滑移粘着接触，MPM不需采取额外的处理；对于需要考虑滑移接触的问题，则需
+要建立相应的接触算法。
+\end_layout
+
+\begin_layout Standard
+在物质点法中，接触关系通过背景网格定义。在单步计算中物质点法在背景网格上计算结点力并积分动量方程，因此物质点法的接触为结点-结点的接触关系，即在背景网格结点上建
+立物体间的接触判断条件并计算接触力，如图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Contact"
+
+\end_inset
+
+所示。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/ContactIdear.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+物质点法的接触算法
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "Contact"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+York等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "York-1999"
+
+\end_inset
+
+提出，在物体发生接触分离前采用单值速度场计算，当检测到物体发生接触分离时采用物体各自独立的速度场进行计算，从而实现了接触物体正常的分离。该算法并未考虑接触物体之
+间的摩擦作用。Bardenhagen、Brackbill
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-2000"
+
+\end_inset
+
+建立了基于拉格朗日乘子法的物质点接触算法，并考虑了库仑摩擦模型，实现了物体间的接触、滑移和分离过程的模拟，随后又对接触判断条件进行了改进
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-2001"
+
+\end_inset
+
+。Hu和Chen
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Hu-2003"
+
+\end_inset
+
+则从多重背景网格的思路建立了物质点法接触算法，通过公共背景网格更新接触面处法向的速度，在物体各自的背景网格计算其他物理量。黄鹏和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Huang-PhD2010,HuangP-2011"
+
+\end_inset
+
+指出Bardenhagen等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-2000"
+
+\end_inset
+
+提出的接触算法中法向量计算不满足共线条件易导致动量不守恒，为此提出了一种接触界面法向量加权计算方法，保证了接触面上法向量共线的问题，并将其用于中低速冲击侵彻问题
+，解决了物质点法在模拟冲击侵彻问题中侵彻阻力过大的问题。Lemiale和Nairn
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lemiale2010"
+
+\end_inset
+
+针对GIMP方法提出了一种精确的接触判断方案，并采用背景网格节点的体积梯度来计算接触面的法线方向，其相对于Bardenhagen等人提出的结点质量梯度求解接触面
+法线更符合实际的物理接触。其方案应用在等径角挤压成型（ECAP）问题的数值模拟上，取得了和有限元模拟一致的结果。在MPM方法的接触算法中，一般通过背景网格结点标
+量(如质量)的梯度计算物体
+\begin_inset Formula $r$
+\end_inset
+
+的表面法向量，例如物体
+\begin_inset Formula $r$
+\end_inset
+
+在背景网格结点
+\begin_inset Formula $I$
+\end_inset
+
+处的表面法向量为
+\begin_inset Formula 
+\begin{equation}
+n_{Ii}^{b}=\frac{1}{|\sum N_{Ip,i}m_{p}^{b}|}\sum N_{Ip,i}m_{p}^{b}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+首先不考虑接触，对各物体独立更新，得到试探解
+\begin_inset Formula 
+\begin{equation}
+\bar{p}_{iI}^{b,n+1/2}=p_{iI}^{b,n-1/2}+\Delta t^{n}f_{iI}^{b,n}\text{}(b=r,s)
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+当两个物体的质点信息映射到同一背景网格结点
+\begin_inset Formula $I$
+\end_inset
+
+时，若试探速度
+\begin_inset Formula $\bar{v}_{iI}^{b,n+1/2}=\bar{p}_{iI}^{b,n+1/2}/m_{I}^{b,n}$
+\end_inset
+
+满足条件
+\begin_inset Formula 
+\begin{equation}
+(\bar{v}_{iI}^{r,n+1/2}-\bar{v}_{iI}^{s,n+1/2})n_{iI}^{r,n}>0\label{ContactConditon}
+\end{equation}
+
+\end_inset
+
+则两个物体将在该结点处发生穿透，否则没有发生穿透，试探解即为真实解，取
+\begin_inset Formula $v_{iI}^{b,n+1/2}=\bar{v}_{iI}^{b,n+1/2}$
+\end_inset
+
+。若发生穿透，需要施加法向接触力
+\begin_inset Formula $f_{I}^{\textrm{c,nor},n}$
+\end_inset
+
+对试探解进行修正，即
+\begin_inset Formula 
+\begin{equation}
+p_{iI}^{b,n+1/2}=\bar{p}_{iI}^{b,n+1/2}+\Delta t^{n}f_{iI}^{b,\mathrm{nor},n}\text{}(b=r,s)\label{eq:Contact-1}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+修正后的速度场
+\begin_inset Formula $v_{iI}^{b,n+1/2}=p_{iI}^{b,n+1/2}/m_{I}^{b,n}$
+\end_inset
+
+应满足无穿透条件
+\begin_inset Formula $(v_{iI}^{r,n+1/2}-v_{iI}^{s,n+1/2})n_{iI}^{r,n}=0$
+\end_inset
+
+，可解得
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+f_{I}^{\textrm{c,nor},n}=-\frac{(m_{I}^{s,n}\bar{p}_{iI}^{r,n+1/2}-m_{I}^{r,n}\bar{p}_{iI}^{s,n+1/2})n_{iI}^{r,n}}{(m_{I}^{r,n}+m_{I}^{s,n})\Delta t}\label{eq30}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+对于考虑摩擦的接触问题，切向接触力可由库仑模型获得。
+\end_layout
+
+\begin_layout Standard
+式(
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "ContactConditon"
+
+\end_inset
+
+)可能会导致虚假接触的发生。例如两个相向而行的物体之间的距离小于两个背景网格单元尺寸时，式(
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "ContactConditon"
+
+\end_inset
+
+)已满足。但此时两个物体的材料区域并没有发生重叠，导致虚假的接触。为此，马志涛和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "MaZT-2010"
+
+\end_inset
+
+提出了一种辅助接触判断条件，通过计算两个物体之间的物理距离辅助式(
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "ContactConditon"
+
+\end_inset
+
+)进行接触判断，即计算两个物体表面与接触结点
+\begin_inset Formula $I$
+\end_inset
+
+最近的距离在该结点法线方向上投影之和
+\begin_inset Formula $D_{I}^{rs}$
+\end_inset
+
+，如图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Distance"
+
+\end_inset
+
+所示。如果
+\begin_inset Formula $D_{I}^{rs}\leq0$
+\end_inset
+
+，则表明两个物体发生材料区域的重叠，表明接触发生。因此，修正的接触判断条件为
+\begin_inset Formula 
+\begin{equation}
+\begin{cases}
+\begin{array}{l}
+(\bar{v}_{iI}^{r,n+1/2}-\bar{v}_{iI}^{s,n+1/2})n_{iI}^{r,n}>0\\
+D_{I}^{rs}\leq\lambda d_{c}
+\end{array}\end{cases}
+\end{equation}
+
+\end_inset
+
+其中，
+\begin_inset Formula $d_{c}$
+\end_inset
+
+表示背景网格的结点间距。为了考虑质点所代表的材料区域引入
+\begin_inset Formula $\lambda$
+\end_inset
+
+，建议取值为0.5。若
+\begin_inset Formula $\lambda$
+\end_inset
+
+取值太小会导致部分穿透。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/ContactRealDistance.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+接触距离计算示意图
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "Distance"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+上述接触算法需要多重背景网格用于独立求解各个物体的动量方程，导致内存需求量大
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-2000,Hu-2003"
+
+\end_inset
+
+。马志涛和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "MaZT-2010"
+
+\end_inset
+
+针对该问题建立了局部多重背景网格接触算法，即仅在发生接触区域给每个物体建立单独的背景网格，其余区域用同一套背景网格求解各个物体的动量方程，如图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "MultiGrid"
+
+\end_inset
+
+所示。该方法降低了对内存的使用量，提高了接触算法效率。
+\end_layout
+
+\begin_layout Standard
+
+\color red
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\color red
+
+\begin_inset Graphics
+	filename ../figures/Multi-Grid.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\color red
+\begin_inset Caption
+
+\begin_layout Plain Layout
+局部多重背景网格示意图
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\color red
+\begin_inset CommandInset label
+LatexCommand label
+name "MultiGrid"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+自适应算法和并行算法
+\end_layout
+
+\begin_layout Standard
+物质点法采用无连接关系的质点和规则的背景网格，易开展
+\begin_inset Formula $h$
+\end_inset
+
+自适应分析。Tan、Nairn
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Tan-J2002"
+
+\end_inset
+
+建立了物质点和背景网格的层级结构化自适应分析算法，通过局部加密物质点和背景网格计算了裂纹尖端的能量释放率。Ma等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "JinMA_phd"
+
+\end_inset
+
+采用成熟的SAMRAI（Structured Adaptive Mesh Refinement Application Infrastructure）结构自适应
+网格，实现了对初始背景网格的分级细化，并在此基础上应用广义物质点法研究了纳米压痕问题。针对冲击爆炸中易出现的非物理现象的数值断裂问题，马上和张雄等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma2009CMES"
+
+\end_inset
+
+提出了质点自适应分裂的物质点法，有效避免了数值断裂问题，如图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "partcile split"
+
+\end_inset
+
+所示。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/particle_split.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+质点自适应分裂示意图
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "partcile split"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+在并行算法方面，Parker
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Parker-J2006,Parker-J2006_1"
+
+\end_inset
+
+和
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-2000"
+
+\end_inset
+
+等人基于消息传递模型(MPI)研究了MPM的并行算法，开发了Uintah程序。黄鹏和张雄等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Huang-J2008,Huang-J2010"
+
+\end_inset
+
+提出基于信息共享模型(OpenMP)的MPM并行算法，张衍涛和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zhang-J2010-CMES"
+
+\end_inset
+
+则近一步建立了基于OpenMP的区域信息交错更新的MPM并行算法，精巧地避免了数据竞争问题。Ma和Lu等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma-2005"
+
+\end_inset
+
+基于并行程序开发平台SAMRAI
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Hornung-J2002"
+
+\end_inset
+
+建立了GIMP的并行算法。
+\end_layout
+
+\begin_layout Standard
+除采用传统的并行算法提高计算效率外，Chiang和DeLisi等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "GPU2010"
+
+\end_inset
+
+还建立了MPM/GIMP的GPU图形加速技术。此外，Humphrey和Meng等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "CPU/GPU"
+
+\end_inset
+
+研究了一种多CPU-GPU动态异步程序运行方案。
+\end_layout
+
+\begin_layout Subsection
+与其它算法的耦合
+\end_layout
+
+\begin_layout Standard
+MPM兼具欧拉和拉格朗日算法的特性，易与有限元法和欧拉算法耦合。目前已有多种基于MPM的耦合算法。
+\end_layout
+
+\begin_layout Standard
+针对MPM在模拟钢筋混凝土结构时离散规模庞大的问题，廉艳平和张雄等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lian-HFEMP"
+
+\end_inset
+
+提出了杂交物质点有限元法，将有限元法的杆单元引入物质点法中，构造了离散钢筋的杆单元。在该方法中，采用物质点离散混凝土，用杂交杆单元离散钢筋，通过背景网格实现两者
+的相互作用，如图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "HFEMP"
+
+\end_inset
+
+所示。该方法很好地解决了离散规模庞大的问题。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/HFEMPMainIdea.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+杂交物质点有限元法示意图
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "HFEMP"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+考虑到在模拟仅涉及材料小变形的材料区域时，MPM计算效率和精度不如FEM，张雄和廉艳平在MPM与FEM耦合方面做了大量工作
+\begin_inset CommandInset citation
+LatexCommand cite
+key "LianCFEMP,Lian-TAML,Lian2012"
+
+\end_inset
+
+。针对超高速碰撞问题，张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zhang-2006"
+
+\end_inset
+
+提出了显式物质点有限元法，建立了物质点法和有限元法的统一框架。该算法初始时采用有限元离散整个计算区域，同时在材料可能发生大变形的空间区域布置背景网格，并在求解过
+程中将进入该网格区域的有限元结点转化为物质点求解，以避免网格畸变。如果背景网格在求解过程中均能覆盖整个求解区域，该方法结果与物质点法结果相同；如果不布置背景网格
+，该方法结果与有限元法结果相同。但是在该方法中，无论单元是否发生了畸变，只要其进入了背景网格区域就被强制转化为物质点，因此没有充分发挥物质点法和有限元法各自的优
+势。为此，廉艳平和张雄等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "LianCFEMP"
+
+\end_inset
+
+首先建立了基于接触算法的耦合物质点有限元法，采用有限元法求解仅涉及小变形的物体，用物质点法求解涉及特大变形的物体，通过接触算法建立两者之间的作用。在此基础上，廉
+艳平和张雄等人进一步提出了自适应物质点有限元法
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lian-TAML,Lian2012"
+
+\end_inset
+
+。该算法采用有限元离散材料全域，在计算过程中将发生畸变的单元通过单元转化算法实时地转化为物质点，通过耦合算法实现物质点和未转化单元的之间相互作用,如图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "AFEMP"
+
+\end_inset
+
+所示。自适应物质点有限元法充分发挥了两种算法的优势，在计算精度与物质点一致的情况下，其计算效率显著高于物质点法。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/AFEMPMateriaDomain.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+自适应物质点有限元法示意图
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "AFEMP"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+由于MPM采用的背景网格为规则的欧拉型网格，因此便于与欧拉法耦合求解流固耦合类问题。Guilkey和Harman等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Guilkey-2007"
+
+\end_inset
+
+将多物质欧拉算法和物质点法通过守恒方程组统一起来，分别采用多物质欧拉算法和物质点法模拟流体区域和固体结构，建立了紧耦合的流固耦合方法。Anvar和Sumanta
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Anvar2008"
+
+\end_inset
+
+将MPM与浸没边界法（hybrid immersed boundary method，HIBM）进行耦合，其中MPM用于求解固体结构，浸没边界法用来处理复杂外形
+结构及其运动边界。在美国普渡大学开发的PRISM 软件中，流固耦合模块采用物质点法模拟弹性固体区域，用有限体积法（FVM）模拟不定常流场，通过浸入边界法实现流体
+和固体交界面的动量和能量的传递
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sun2010,PRISM"
+
+\end_inset
+
+。
+\end_layout
+
+\begin_layout Standard
+Guo和Yang
+\begin_inset CommandInset citation
+LatexCommand cite
+key "GuoZC-J2006"
+
+\end_inset
+
+则采用握手区方法将MD和MPM耦合，模拟了Cu-Cu和Si-Si的群簇高能碰撞问题。Lu等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lu-J2006"
+
+\end_inset
+
+通过逐步细化MPM背景网格间距过渡到分子尺度，在过渡区建立物质点和分子的一一对应关系，将MPM与MD进行无缝耦合，分析了硅在纳米尺度下拉伸过程。Chen等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Chen-J2011"
+
+\end_inset
+
+采用耦合的MD/MPM进行了纳米尺度的切削和薄膜生长过程的多尺度分析。
+\end_layout
+
+\begin_layout Subsection
+物质点建模
+\end_layout
+
+\begin_layout Standard
+物质点法不需要网格的特点使其非常适合于建立复杂物体的计算模型。特别是对于一些新型材料、复合材料，如果能从其微观结构出发，可以很好地研究其宏观力学性质，复杂的材料
+微观结构是这种研究途径的最大阻碍，物质点法为克服该阻碍提供了新的思路。
+\end_layout
+
+\begin_layout Standard
+清华大学张雄课题组针对上述问题，提出了多种建立物质点法离散模型的方法。王汉奎等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Wang-2012,Wangk-PhD"
+
+\end_inset
+
+针对高组份比碳管增强复合材料难以生成微观模型的问题，基于物质点法提出了适用于任意外形夹杂的复合材料微结构的落管生成算法。该算法充分利用了物质点法易于处理接触的优
+点，首先生成多条任意弯曲的碳管，然后让其自由下落堆叠在一起，再将基体材料填充到管间，从而生成无穿透、采用弯管的微观结构模型，如图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "CompositeFall"
+
+\end_inset
+
+所示。生成模型的体分比可以达到与实际一致，充分克服了有限元模型中或者只能采用直管、或者采用弯管而无法完全避免穿透的缺点。宫伟伟等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "GWW-0,Gong-PhD"
+
+\end_inset
+
+基于Micro-CT扫描结果，提出了建立泡沫铝材料三维真实微观结构模型的方法。该方法首先通过CT扫描图片获得材料微观结构在空间分布的信息，然后将像素点换算、合并
+后得到物质点，从而巧妙的利用物质点法的粒子特性建立了接近于真实结构的微观模型，典型的泡沫铝微观结构模型如图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Al_Foam"
+
+\end_inset
+
+所示。周双珍和张雄等进一步基于重构方法建立了人体的物质点离散模型
+\begin_inset CommandInset citation
+LatexCommand cite
+key "ZhouSZ-2013A,ZhouSZ-2013B"
+
+\end_inset
+
+，为人体真实建模提供了一种新型途径。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/composite_fall_export.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+落管法生成高组份比碳纳米管复合材料的离散模型
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "CompositeFall"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/modelfoam.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+泡沫铝三维物质点法模型
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "Al_Foam"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+王宇新等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "WangYX-2008"
+
+\end_inset
+
+也建立了针对物质点法离散的三维前处理系统，提出了应用递归四叉树法、扫描表示法和CSG法划分任意形状几何实体的方法。
+\end_layout
+
+\begin_layout Subsection
+其它
+\end_layout
+
+\begin_layout Standard
+MPM在其它方面亦有扩充和完善，涉及背景网格的编程技术、薄膜问题、裂纹扩展问题和饱和多孔介质等方面。
+\end_layout
+
+\begin_layout Standard
+在物质点法中，传统的背景网格均采用预设的固定域背景网格。在有些计算中，背景网格范围远大于计算物体的几何尺寸范围，影响了计算效率。所以Shin等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Shin2010"
+
+\end_inset
+
+研究了物质点动网格技术，使背景网格域与物质域达到匹配和优化的目的，提高了计算效率。马志涛和张雄等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "MaZT-2010"
+
+\end_inset
+
+建立了动态网格算法，动态创建被物质点占据的背景网格单元，大幅度地提高了计算效率，节省了内存使用量。同时，其他学者直接应用有限元非结构化网格代替传统的结构化网格进
+行了相关研究。Wieckowski等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Wiechowski1999,Wieckowski-2004"
+
+\end_inset
+
+采用有限元三角形网格作为物质点的背景网格，解决了复杂边界的施加问题，并将其成功应用于筒仓内的谷物流动问题。另一方面，传统规则化背景网格在模拟裂纹问题时，无法在规
+则化的网格中设置斜裂纹，同时不能很好的解决应力集中问题，为此，Wang和Karuppiah
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Wang2005"
+
+\end_inset
+
+等人采用自适应的非规则化四边形背景网格很好的模拟了斜裂纹的动态力学行为。
+\end_layout
+
+\begin_layout Standard
+郑勇刚和陈震等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "zheng2006"
+
+\end_inset
+
+采用MPM分析了薄膜失效的机理，但因薄膜结构在厚度方向的特征尺度远小于其它两个方向的特征尺度，直接采用等间距物质点离散薄膜结构会导致离散质点数目庞大，求解耗时。
+York等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "York-2000,York-1999"
+
+\end_inset
+
+则用一层物质点离散薄膜结构，通过建立物质点的局部切平面坐标系，强制物质点的应力分量在切平面法线方向上为零来近似模拟薄膜的力学行为，避免了在薄膜厚度方向上的离散。
+Gan和Chen等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "GanY2011"
+
+\end_inset
+
+则在物质点间引进三角形拓扑结构以描述离散的薄膜曲面，通过计算三角形面的法线来计算物质点的法线，改善了质点法线的计算精度并降低了计算量。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../figures/Membrane.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+薄膜局部坐标系: (a) York et al
+\begin_inset CommandInset citation
+LatexCommand cite
+key "York-1999"
+
+\end_inset
+
+, (b) Gan et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "GanY2011"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "Membrane-1"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+传统物质点法由于背景网格速度域的单值性，不能处理显式裂纹的扩展。Nairn的课题组
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Nairn-CMES-2003,Nairn-J2006_crack,Guo-2005"
+
+\end_inset
+
+开发了基于单背景网格多速度场的MPM/CRAMP程序，能够快速有效地计算断裂参数（J积分、应力强度因子、裂纹张开位移），可处理裂纹的表面接触问题，以及模拟裂纹的
+动态扩展。
+\end_layout
+
+\begin_layout Standard
+张洪武和王鲲鹏等人在饱和多孔介质Biot理论框架下，基于饱和多孔介质
+\begin_inset Formula $u-p$
+\end_inset
+
+形式控制方程，建立了相应的物质点法求解格式
+\begin_inset CommandInset citation
+LatexCommand cite
+key "zhanghw2009,zhang-CJ2010-1"
+
+\end_inset
+
+，成功模拟了饱和多孔介质动力学响应。同时，在此框架下建立了多孔介质与固体结构间的接触算法，饱和多孔介质与单相固体介质的力学行为分别通过耦合物质点法和传统物质点法
+进行模拟
+\begin_inset CommandInset citation
+LatexCommand cite
+key "zhang2009II"
+
+\end_inset
+
+。为了进一步考虑多孔介质中固体骨架与孔隙流体间相互作用，张洪武等人基于饱和多孔介质
+\begin_inset Formula $u$
+\end_inset
+
+–
+\begin_inset Formula $U$
+\end_inset
+
+形式控制方程，建立了固体骨架与孔隙流体间相互作用的两相物质点方法
+\begin_inset CommandInset citation
+LatexCommand cite
+key "zhang-CJ2010-3"
+
+\end_inset
+
+。
+\end_layout
+
+\begin_layout Subsection
+物质点法与其它无网格法的比较
+\end_layout
+
+\begin_layout Standard
+所有的无网格法均可归纳为紧支试函数加权余量法的特殊形式，物质点法可以看成是一种采用质点和网格双重描述的紧支试函数加权余量法，其试函数为基于背景网格的有限元形函数
+，其加权余量格式采用Galerkin弱形式
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zhang2009"
+
+\end_inset
+
+。
+\end_layout
+
+\begin_layout Standard
+物质点法的试函数形式非常简单，计算量与移动最小二乘近似、重构核近似、径向基函数近似、点插值近似、自然邻接点插值近似等常用无网格法近似函数相比小得多。更重要的是，
+物质点法通常采用规则背景网格，很容易定位计算点的影响节点，计算形函数时不需要临近节点搜索，大大降低了计算量。另外，由于物质点法实际上采用了物质点积分，在数值积分
+计算量上也小于其它弱形式无网格法。就显式积分格式而言，有限元法的时间步长取决于单元特征尺寸，其它多数无网格法的时间步长取决于节点间距
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Smolinski-2000,Liu-2005-MWLS"
+
+\end_inset
+
+，当材料急剧压缩时，这些方法的临界时间步长都会由于单元尺寸/节点间距的减小而减小，甚至可能有量级的改变。但物质点法的临界时间步长取决于背景网格尺寸，即使在材料急
+剧压缩时也不会有较大的变化，因此物质点法的计算效率可以很高，在某些问题中甚至可以高于显式有限元法。物质点法计算效率高的优点决定了其在冲击、碰撞、爆炸等涉及超大变
+形的问题中的应用优势，对于一些需要较大规模离散（如千万以上自由度）才能很好描述的问题，也非常适合用物质点法进行分析。
+\end_layout
+
+\begin_layout Standard
+物质点法中自动满足速度场单值条件，即使不采用接触算法也不会出现物质间的穿透。在某些问题中，例如泡沫材料、生物体组织的微结构分析中，可能出现非常复杂的接触现象，不
+仅难以建立有限元离散模型，即使采用其它无网格法建立了离散模型，也难以处理大量、复杂的接触过程，而物质点法可以很方便地建立模型并进行计算分析。 
+\end_layout
+
+\begin_layout Standard
+SPH是已纳入众多商业软件、应用较为广泛的一种粒子类方法，将其与物质点法在某些特定问题上尝试进行对比，是很多研究者感兴趣的问题。马上和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma-2009"
+
+\end_inset
+
+分别从临近点搜索、近似函数、形函数一致性、不稳定性、时间积分、边界条件和接触算法对物质点法和SPH进行了详细比较。为了确保精度和数值稳定性，SPH在进行函数拟合
+及其导数计算时，需要取足够大的支持域以包含足够多的质点，而支持域内的质点在随时变化（对于Euler核函数而言），需要频繁搜索临近质点，导致计算量增加；由第
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sub:MPM"
+
+\end_inset
+
+节可知，标准物质点法中通常只需对4个（二维）或8个（三维）结点求和，不需搜索临近质点，这部分计算量显著小于SPH。SPH的近似函数不满足插值条件，也给位移边界条
+件的施加增加了困难，需采用特殊的处理方案，如虚拟质点法
+\begin_inset CommandInset citation
+LatexCommand cite
+key "LiuMB-2002"
+
+\end_inset
+
+；由
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sub:bc"
+
+\end_inset
+
+节可知，物质点法施加边界条件比较容易。在质点非均匀分布情况下，SPH的近似函数不满足零阶和一阶一致性，带来一定的数值问题
+\begin_inset CommandInset citation
+LatexCommand cite
+key "LiuGR-2003"
+
+\end_inset
+
+；在标准物质点法中，近似函数满足零阶和一阶一致性；GIMP中近似函数与质点均布情况下的核函数类似，除边界附近外可以满足一致性条件。SPH具有拉伸不稳定性，即当材
+料在拉伸应力作用下，质点往往聚集成团，某些情况下会造成数值断裂
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Johnson-1996b"
+
+\end_inset
+
+，为解决该问题研究者提出了多种方法，如修正SPH方法（CSPH）
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Chen-J1999"
+
+\end_inset
+
+、施加人工力
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Monaghan-J2000"
+
+\end_inset
+
+、或增加应力点
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Dyka-J1997"
+
+\end_inset
+
+等；由第
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sub:MPM"
+
+\end_inset
+
+节和
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sub:GIMP"
+
+\end_inset
+
+节可知，MPM中不存在拉伸不稳定性，但存在数值噪音，可通过GIMP得到一定解决。如前所述，当材料压缩时，SPH中光滑长度减小，从而造成时间步长的减小；物质点法中
+若背景网格结点间距保持不变，临界时间步长变化不会太大。SPH和物质点法均可在一定程度上自动处理两物体的接触，但SPH并不能保证速度场的单值性，界面可能穿透和混合
+。综合上述分析，物质点法的计算效率高，在某些问题的求解上具有优势。图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "TPCcomp"
+
+\end_inset
+
+为LS-DYNA中的SPH模块和MPM3D程序对同一问题的单步计算时间比较，当质点数越多时，物质点法在计算效率上的优势越明显
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma-2009"
+
+\end_inset
+
+。表
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "TaylorError"
+
+\end_inset
+
+和图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Taylor"
+
+\end_inset
+
+比较了两种方法计算同一Taylor杆问题的计算结果，其中SPH1表示光滑长度设为1.2，SPH2表示光滑长度设为1.4。表
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "TaylorError"
+
+\end_inset
+
+表明物质点法的精度更好
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma-2009"
+
+\end_inset
+
+，而图
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Taylor"
+
+\end_inset
+
+(a)说明SPH1计算结果中因拉伸不稳定性存在明显的数值断裂现象，加大光滑长度可缓解该问题，但也将大幅度增加计算量。
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename ../figures/TPCNPnr.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+不同计算规模
+\begin_inset Formula $N_{p}$
+\end_inset
+
+下，单步运行时间的比较
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma-2009"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "TPCcomp"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Taylor杆问题计算结果误差比较
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma-2009"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="5" columns="5">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $L$
+\end_inset
+
+(mm)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $D$
+\end_inset
+
+(mm)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $W$
+\end_inset
+
+(mm)
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+\begin_inset Formula $\bar{\Delta}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+实验
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+16.2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+13.5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+10.1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+SPH1
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+15.4
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+15.6
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9.9
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.075
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+SPH2
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+15.5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+14.7
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+10.0
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.047
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+MPM
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+16.3
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+13.0
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9.6
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" bottomline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.031
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "TaylorError"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename ../figures/taylortop.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption
+
+\begin_layout Plain Layout
+Taylor杆问题最终时刻铜杆构型（上行为侧视图，下行为底视图）
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma-2009"
+
+\end_inset
+
+：（a）SPH1，（b）SPH2，（c）MPM
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset CommandInset label
+LatexCommand label
+name "Taylor"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+与其它无网格法相比，物质点法虽然具有多种优点，但也具有较明显的缺点。标准物质点法的近似函数不具备其它常用无网格法近似函数精度高、光滑性好、具有高阶一致性等优势，
+在场函数急剧变化的区域需大量加密质点/网格或采用广义插值物质点法才能得到良好地描述，事实上广义插值物质点法对近似函数的改进就包含了无网格法近似函数中支持域的概念
+。物质点积分的精度低于高斯积分，也限制了物质点法的整体精度。因此对于静力、低应变率问题，采用具有高阶精度的无网格法求解较为合适；对于局部精度要求较高的问题，宜采
+用高精度无网格法或广义插值物质点法进行求解。 
+\end_layout
+
+\begin_layout Section
+物质点法软件开发
+\end_layout
+
+\begin_layout Standard
+随着MPM算法上的不断完善和扩展，目前出现了一批以MPM为核心算法的计算软件，包括UCF、FLIP-MPM-MFM、NairnFEAMPM、MPM3D和MPMs
+im等。
+\end_layout
+
+\begin_layout Standard
+美国犹他大学C-SAFE（Center for the Simulation of Accidental Fires and Explosions)研究中心
+ 
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Center for the Simulation of Accidental Fires and Explosions http://www.csafe.
+ utah.
+ edu
+\end_layout
+
+\end_inset
+
+在美国能源部“加速战略计算计划”（Accelerated Strategic Computing Initiative, ASCI）
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Academic Strategic Alliances Program.
+ http://www.llnl.gov/asci-alliances
+\end_layout
+
+\end_inset
+
+的支持下开发了Uintah Computational Framework (UCF) 大规模并行可视化数值模拟工具，物质点法作为其中的核心算法之一，主要进行固
+体和含能易爆材料的爆炸、燃烧、相变等极端载荷环境的数值模拟。美国Los Alamos国家实验室的计算流体动力学和固体力学小组开发的CartaBlanca软件
+\begin_inset CommandInset citation
+LatexCommand cite
+key "CartaBlanca"
+
+\end_inset
+
+ 将物质点法嵌入到多相流框架（multiphase flow framework）中，开发了FLIP-MPM-MFM(fluid implicit
+ particle-material point method-multiphase flow method)模块
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zou2004"
+
+\end_inset
+
+，用来求解复杂力学问题， 包括固体的失效和侵彻、热传导、相变、炸药化学反应和多相流等，能模拟复杂武器侵彻和弹药爆炸相互作用
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zou2004,Zou2005,ZhangZou2008,ZhangDZ2009"
+
+\end_inset
+
+。Nairn研究小组采用C++开发了计算力学软件NairnFEAMPM
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+http://code.google.com/p/nairn-mpm-fea/
+\end_layout
+
+\end_inset
+
+，其主要包括有限元分析模块和物质点计算模块，物质点模块部分主要求解二维、三维复合材料的失效、裂纹扩展和面板之间的脱胶等动力学问题。清华大学张雄课题组采用C++开
+发了三维显式并行物质点法程序MPM3D
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zhang-MPM3D"
+
+\end_inset
+
+，目前已实现了USF、USL和MUSL求解格式、GIMP算法、接触算法、质点自适应分裂算法、有限元法、杂交物质点有限元法、耦合物质点有限元法和自适应物质点有限元
+法，具有多种材料模型、状态方程和失效模型，并分别利用OpenMP和MPI实现了SMP(Symmetric Multi Processing，对称多处理系统)和M
+PP(Massively Parallel Processing，大规模并行处理系统)两种体系下的并行化。2009年，美国的ADI公司发布了ASTE-P1.0软件
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+http://www.advanceddynamics-usa.com
+\end_layout
+
+\end_inset
+
+，将物质点法加入到了FSI、CSD、CFD模块，用来计算气动弹性问题；2010年，英国的Jveer Aerospace Ltd公司推出了商业化的物质点计算软件M
+PMsim
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+http://www.mpmsim.com/content/home
+\end_layout
+
+\end_inset
+
+。
+\end_layout
+
+\begin_layout Section
+物质点法的应用
+\end_layout
+
+\begin_layout Standard
+物质点法由于综合了拉格朗日描述和欧拉描述的优势，不存在单元畸变和网格扭曲，且具有很高的计算效率，因此逐渐受到研究者的广泛关注，已经在碰撞冲击、侵彻、爆炸、动态断
+裂、流固耦合、多尺度分析、颗粒材料流动和岩土失效等一系列涉及材料特大变形问题中得到了应用。
+\end_layout
+
+\begin_layout Standard
+在碰撞冲击方面，马上和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma-J2006,Ma-MThesis"
+
+\end_inset
+
+采用物质点法研究了弹丸超高速碰撞薄板和厚板等一系列问题，初步展示了物质点法在求解此类问题中的潜力，他们还进一步用物质点有限元法模拟了超高速碰撞过程；黄鹏和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Huang-J2008"
+
+\end_inset
+
+研究了背景网格尺寸、粒子数量等对超高速撞击薄板过程中碎片云形成的影响，他们用1300多万物质点模拟得到的碎片云形貌与实验结果吻合良好；潘小飞和许爱国等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Pan-J2008"
+
+\end_inset
+
+研究了高能炸药中孔洞在冲击下的变形和坍塌，模拟结果显示孔洞坍塌主要是由于孔洞顶部的粒子射流造成的，许爱国等进一步研究了多孔材料在冲击作用下的特性
+\begin_inset CommandInset citation
+LatexCommand cite
+key "xu-CJ2010,Xu-2011"
+
+\end_inset
+
+；Li等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Li-J2011_failure"
+
+\end_inset
+
+研究了脆性圆盘撞击过程中的失效问题，发现不同的撞击速度会导致不同的失效模式，与实验观察所得结果基本吻合；陈卫东和张帆等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Chen2012"
+
+\end_inset
+
+考虑了材料累积损伤失效效应，模拟了阿姆科铁在超高速碰撞过程中的层裂现象。
+\end_layout
+
+\begin_layout Standard
+
+\color red
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+
+\color red
+\begin_inset Graphics
+	filename ../figures/DebrisCloud.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\color red
+\begin_inset Caption
+
+\begin_layout Plain Layout
+大规模物质点模拟得到的碎片云形貌及其与实验结果的比较，左图为模拟结果，右图为实验结果
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Huang-PhD2010"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\color red
+\begin_inset CommandInset label
+LatexCommand label
+name "Appl-DebrisCloud"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+在侵彻方面，Sulsky等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sulsky-1995,Sulsky-1996"
+
+\end_inset
+
+初步模拟了钢球侵彻铝靶等问题。Zhang等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Zhang-2008JCP,ZhangDZ-J2011"
+
+\end_inset
+
+在研究多相流的物质点法和改进的物质点法形函数时，模拟了钨弹侵彻钢靶等问题。采用合适的接触算法对于侵彻问题的正确模拟具有重要的影响，马志涛和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "MaZT-2010"
+
+\end_inset
+
+基于局部多重背景网格的物质点接触算法模拟了中低速侵彻问题，剩余弹速等指标与实验结果吻合良好；黄鹏和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "HuangP-2011"
+
+\end_inset
+
+进一步采用物质点接触算法模拟了中低速侵彻薄靶和厚靶问题，计算结果与实验结果一致，并优于未采用接触算法的标准物质点法结果；廉艳平和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lian-HFEMP,Lian-CFEMP"
+
+\end_inset
+
+采用杂交物质点有限元法和耦合物质点有限元法分别模拟了钢筋混凝土靶体侵彻问题和金属靶体侵彻问题，得到了与实验结果吻合的剩余弹速和构型。
+\end_layout
+
+\begin_layout Standard
+在爆炸问题方面，Hu和Chen
+\begin_inset CommandInset citation
+LatexCommand cite
+key "HuWQ2006"
+
+\end_inset
+
+用物质点法模拟了激波管、Sedov-Taylor爆轰波等典型爆炸问题，在此基础上计算了内含空气和炸药的混凝土墙在爆炸作用下的破坏过程；马上和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ma2009CMES,Ma-CJ2009"
+
+\end_inset
+
+较为详细的研究了激波管问题、爆轰驱动飞片问题和射流问题，他们所采用的自适应物质点法可以有效解决标准物质点法求解爆炸问题中可能出现的数值断裂；廉艳平和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lian-Fyler"
+
+\end_inset
+
+进一步详细研究了爆轰驱动飞片问题，他们发现Gurney 公式对非对称构型装药结果预测很好，但对于对称构型装药结果预测偏高，为此他们提出了一种修正方案，所得预测结
+果得到很大改善；王宇新、陈震和张洪武等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Wang-CJ2006,Wang-PhDThesis,Wang-J2011"
+
+\end_inset
+
+采用物质点法系统研究了滑移爆轰、爆炸焊接等问题；张忠和陈卫东等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "zhangZh-J2011"
+
+\end_inset
+
+基于物质点法分析了非均质固体炸药的起爆过程，并研究了不同材料破片的临界冲击起爆速度。
+\end_layout
+
+\begin_layout Standard
+在动态断裂方面，Nairn研究组做了大量的工作。Tan和Nairn
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Tan-J2002"
+
+\end_inset
+
+首先用多级自适应加密的方法，计算了裂纹尖端的能量释放率。Nairn研究组系统地发展了二维和三维裂纹面的描述方式
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Nairn-CMES-2003,Guo-2006"
+
+\end_inset
+
+，他们采用多重速度场描述裂纹两侧的速度不连续，并使用接触算法避免裂纹面之间的穿透，他们称这种方法为CRAMP。裂纹尖端的各种参数，如应力强度因子、
+\begin_inset Formula $J$
+\end_inset
+
+积分、能量释放率等是判断动态裂纹扩展的重要依据，Nairn等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Guo-2005,Nairn-J2006_crack"
+
+\end_inset
+
+对物质点法中上述参数的计算进行了详细讨论。Nairn等还在CRAMP的基础上，对物质点法中其它类型不连续面的模拟进行了研究
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Nairn-2007"
+
+\end_inset
+
+，并利用CRAMP作为数值实验手段，分析了中密度纤维板的断裂强度
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Matsumoto-2009"
+
+\end_inset
+
+。Bardenhagen和Nairn等进一步发展了动态裂纹扩展的物质点法，他们用
+\begin_inset Formula $J$
+\end_inset
+
+积分作为扩展准则，用内聚力模型（cohesive model）描述裂纹进行区（processing zone）。Daphalapurkar等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Daphalapurkar-2007"
+
+\end_inset
+
+结合GIMP和内聚力模型，研究了延性和脆性材料中II型裂纹的动态扩展。Gilabert等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Gilabert-J2011_crack"
+
+\end_inset
+
+采用物质点法模拟了陶瓷、玻璃等脆性材料中石英夹杂附近裂纹萌生、扩展的过程。
+\end_layout
+
+\begin_layout Standard
+另一类描述裂纹萌生和扩展的方式是不直接显式引入不连续面，而用粒子失效或破坏来近似表示裂纹的变化。在这方面，Sulsky、陈震、Schreyer及其合作者完成了大
+量的工作，他们主要采用脱聚（decohesion）本构模型
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Schreyer-J2002_failure"
+
+\end_inset
+
+描述粒子失效后的力学行为，因而不必显式给出裂纹的位置。陈震等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Chen-J2002_failure,Chen-J2003_failure"
+
+\end_inset
+
+首先用物质点法模拟了冲击载荷下脆性材料的动态失效问题；Schreyer和Sulsky等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sulsky-2004_failure"
+
+\end_inset
+
+采用上述脱聚本构模型研究了脆性材料的层裂等动态断裂问题；陈震等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Chen-J2005_failure,Zheng-2006A"
+
+\end_inset
+
+结合分叉分析确定何时采用脱聚本构模型，并研究了薄膜脱层问题；陈震和干湧等进一步和传热分析相结合，研究了材料在局部加热情况下的失效问题
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Chen-J2008_failure"
+
+\end_inset
+
+；Shen
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Shen-CMES-2009"
+
+\end_inset
+
+引入了率相关本构模型，模拟了玻璃在冲击作用下的失效破碎问题；Sulsky等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Sulsky-2011"
+
+\end_inset
+
+将该方法用于北冰洋中海冰的运动和形变研究。Gupta等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Gupta-2011"
+
+\end_inset
+
+使用无单元伽辽金法（EFGM）、SPH无网格法、物质点法结合不同的断裂准则对单向拉伸、四点弯、裂纹分叉等问题进行了计算，发现适当的断裂准则对于正确描述裂纹扩展行
+为至关重要，采用何种无网格法差别不大。Wang等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Wang-J2005_crack"
+
+\end_inset
+
+采用非规则布点计算了二维混合型裂纹的应力强度因子，并与有限元结果进行了比较。Ionescu等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ionescu-J2006_failure"
+
+\end_inset
+
+基于粒子失效方法研究了软组织的破坏问题，其中基体和纤维采用不同的准则分别考虑失效。
+\end_layout
+
+\begin_layout Standard
+在岩土力学及颗粒流动方面，Bardenhagen等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-2000"
+
+\end_inset
+
+在2000年就对物质点法模拟颗粒材料进行了尝试；Cummins和Blackbill
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Cummins-J2002_implicitMPM"
+
+\end_inset
+
+进一步发展了颗粒材料的隐式物质点法；Lenardic等人
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lenardic2000"
+
+\end_inset
+
+用物质点法模拟了复合岩层和地幔对流的折叠、挤压现象；Wieckowski等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Wieckowski-2004"
+
+\end_inset
+
+模拟了贮料垛内的颗粒流动问题；王津龙等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "wang-J2005"
+
+\end_inset
+
+基于物质点法模拟了柱状堆石成型过程；Coetzee及其合作者对岩土挖掘、颗粒流动等问题进行了较为深入的研究
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Coetzee-J2005,Coetzee-J2007"
+
+\end_inset
+
+，他们详细比较了物质点法结果、离散元法结果和实验结果，发现基于物质点法给出的结果更为精确；黄鹏等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Huang-PhD2010"
+
+\end_inset
+
+基于Drucker-Prager本构模型和刚柔接触物质点法，对边坡失效、堆积物坍塌、岩土侵彻等问题进行了模拟分析；Andersen等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Andersen"
+
+\end_inset
+
+也用广义插值物质点法分析了边坡失效问题，他们还初步考察了对建筑物的影响；Colom等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "colom"
+
+\end_inset
+
+分析了土骨架和空隙流的相互作用；廉艳平和张雄等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lian2012"
+
+\end_inset
+
+也用自适应物质点有限元法分析了边坡失效问题，结果与标准物质点法和实验结果均吻合，但计算量明显小于标准物质点法。
+\end_layout
+
+\begin_layout Standard
+
+\color red
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+
+\color red
+\begin_inset Graphics
+	filename ../figures/AFEMPalu280APic.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\color red
+\begin_inset Caption
+
+\begin_layout Plain Layout
+边坡失效问题的物质点有限元法结果与实验结果对比
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lian-PhD"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Appl-Slope"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+在流固耦合方面，York和Sulsky等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "York-1999,York-2000"
+
+\end_inset
+
+最先采用物质点法模拟流固耦合问题，其中薄膜和流体都采用物质点离散，计算结果显示能较好的模拟气囊膨胀和碰撞等问题。Hu等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "HuP-2009,HuP-2010"
+
+\end_inset
+
+也基于固体和流体区域均用物质点离散的方法，研究了气动弹性问题，他们结合了自适应网格加密（AMR）方法以提高流场模拟精度。为了满足某些问题的高精度流场求解要求，有
+些研究者将物质点法和计算流体动力学（CFD）求解器相结合，如Guilkey及其合作者
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Guilkey-2007"
+
+\end_inset
+
+利用多物质流场求解器ICE模拟了含能容器爆炸的过程，计算中物质点法只负责固体区域的求解；Gilmanov和Acharya
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Gilmanov-2008,Gilmanov-2008a"
+
+\end_inset
+
+将浸没边界法和物质点法相结合，用于流固耦合问题和流-固-热耦合问题的求解，该方法中物质点法同样负责固体区域的求解；廉艳平等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "LianCFEMP"
+
+\end_inset
+
+利用耦合物质点有限元法成功求解了水柱坍塌等流固耦合问题，其中物质点法用以处理流体区域，有限元法用以处理固体区域，以发挥两者的优势。对于流体和固体占据相同区域、紧
+密耦合的流固耦合问题，例如饱和多孔介质问题，张洪武和王鲲鹏
+\begin_inset CommandInset citation
+LatexCommand cite
+key "zhang-CJ2010-3"
+
+\end_inset
+
+采用两相物质点方法研究了其动力学问题，该方法中使用两套物质点分别描述固体骨架和孔隙流体。
+\end_layout
+
+\begin_layout Standard
+
+\color red
+\begin_inset Float figure
+placement tbh
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+
+\color red
+\begin_inset Graphics
+	filename ../figures/CFEMPFSIWaterCollapseSize.eps
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\color red
+\begin_inset Caption
+
+\begin_layout Plain Layout
+水柱坍塌问题的耦合物质点有限元法结果及与其它数值结果的对比
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Lian-PhD"
+
+\end_inset
+
+
+\color black
+，其中第2和第4列为Idelsohn等采用粒子有限元法
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Idelsohn-2008-FSI"
+
+\end_inset
+
+的计算结果
+\end_layout
+
+\end_inset
+
+
+\begin_inset CommandInset label
+LatexCommand label
+name "Appl-FSI"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+在多尺度分析方面，除前述物质点法与分子动力学等分子模拟方法的并发耦合外，Ayton等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ayton-J2001"
+
+\end_inset
+
+在脂双层的研究中，利用非平衡态分子动力学（NEMD）计算传输系数，然后用于物质点法模拟；Shen和Chen
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Shen-2005"
+
+\end_inset
+
+在研究薄膜脱层的过程中，使用了分子动力学计算和物质点法计算综合分析的方法；Borodin等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Borodin-2005"
+
+\end_inset
+
+在用物质点法分析纳米复合材料性质时，首先由分子动力学模拟获得聚合物基体的粘弹性参数和界面剪切模量；王汉奎等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Wangk-PhD,Liu-2013-IJMMD"
+
+\end_inset
+
+利用分子动力学获得高温高压下的状态点，再结合物质点法进行超高速碰撞分析，有效地克服了极端状况下材料状态方程参数不易确定的困难。物质点法还非常适于从材料的微观结构
+出发研究各种材料的特性，例如Shen等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Shen-2000"
+
+\end_inset
+
+用物质点法研究了多晶体的局部塑性变形；Xue等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Xue-2006"
+
+\end_inset
+
+采用直接模拟大尺寸粒子、均匀化小尺寸粒子的方法，研究了塑胶炸药的粘弹性性质。Bardenhagen及其合作者率先用物质点法对泡沫材料进行了研究
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Bardenhagen-JMPS-2005"
+
+\end_inset
+
+，他们先后使用随机生成和X光片重建的方式获得开孔泡沫材料的微观结构，并基于超弹性本构方程模拟了立方体元胞的压缩，得到了包括平台段和压实段的应力-应变曲线，结果表
+明孔隙度具有重要影响；Daphalapurkar等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Daphalapurkar-2008"
+
+\end_inset
+
+进一步用显微CT扫描重构的方式获得闭孔泡沫PMI材料的真实微观结构，物质点法对代表体元的模拟也得到了三阶段应力-应变曲线，并且发现还在弹性段就出现了胞壁的弹性屈
+曲；泡沫铝是用于空间防护的重要材料，宫伟伟等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "GongWW-2012"
+
+\end_inset
+
+利用显微CT重构了泡沫铝的三维真实微观结构，模拟了填充式Whipple防护结构和夹层式Whipple防护结构在高速撞击下的响应，其中胞壁材料采用了Johnson
+-Cook材料强度模型和Grueneisen状态方程，所得损伤情况和孔洞尺寸与实验吻合；王汉奎等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Wang-2012"
+
+\end_inset
+
+基于落管法建立的纳米碳管增强复合材料微观模型，研究了该材料的力学性质，发现碳管体分比的影响大于碳管间连接的影响；Li等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Li-2011-MM"
+
+\end_inset
+
+从微观相互作用出发对接触理论进行了研究。
+\end_layout
+
+\begin_layout Standard
+在生物力学方面，Guilkey等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Guilkey-2006"
+
+\end_inset
+
+对微血管网络结构进行了1300万质点的大规模数值模拟。干湧等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "GanY2011"
+
+\end_inset
+
+模拟了卵胞浆内精子注射（ICSI）技术中卵子透明带的刺穿过程，其中胞浆采用流体本构，透明带用薄膜结构模拟。周双珍等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "ZhouSZ-2013A"
+
+\end_inset
+
+对三种头部模型在圆柱体撞击下的动态响应进行了模拟，以确定不同边界条件和头部肌肉对撞击结果的影响；在此基础上，他们对头部加速伤和减速伤进行了模拟
+\begin_inset CommandInset citation
+LatexCommand cite
+key "ZhouSZ-2012"
+
+\end_inset
+
+，研究易损伤部位和损伤机理；周双珍等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "ZhouSZ-2013B"
+
+\end_inset
+
+还建立了人体脊柱着陆冲击模型，对人体脊柱各部位的动力学响应受骨密度变化和不同着陆角度的影响进行了研究分析。 
+\end_layout
+
+\begin_layout Standard
+物质点法还广泛用于其它具有超大变形的问题，如Wieckowski
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Wieckowski-2004"
+
+\end_inset
+
+将物质点法用于切削问题的模拟，Ambati等
+\begin_inset CommandInset citation
+LatexCommand cite
+key "Ambati-J2012"
+
+\end_inset
+
+进一步深入研究了该问题，计算结果能够明确捕捉到切削过程中产生的剪切带等局部化现象。
+\end_layout
+
+\begin_layout Section
+结论
+\end_layout
+
+\begin_layout Standard
+无网格物质点法起源于FLIP方法，其中质点携带了所有的物质信息并在其上进行本构计算，从而可方便地扩展用于固体力学问题求解。物质点法采用拉格朗日质点离散，避免了对
+流项处理；用欧拉背景网格计算空间导数和求解动量方程，避免了网格畸变问题，因此非常适合求解涉及材料特大变形和断裂破碎的问题。本文系统的梳理了物质点法的基本理论和实
+现细节，以及算法上的扩展，包括广义插值物质点法、接触算法、自适应算法、与其它算法的杂交耦合等，此外还介绍了基于物质点法的软件开发现状，最后详细总结了物质点法在超
+高速碰撞、冲击侵彻、爆炸、动态断裂、流固耦合、多尺度分析、颗粒材料流动和岩土失效等方面的应用，充分展现了其优势：
+\end_layout
+
+\begin_layout Standard
+(1) 在材料域的离散上，无网格法采用一组无拓扑关系的点离散，既便于建立三维复杂结构离散模型，又便于进行前后处理。虽然需要背景网格积分，但是背景网格布置相对简单
+。
+\end_layout
+
+\begin_layout Standard
+(2) 单步计算过程中，质点通过背景网格建立与其它质点的相互影响，不需要建立质点的邻居列表。
+\end_layout
+
+\begin_layout Standard
+(3) 由于背景网格仅在当前步与物质点一起变形并在下一时间步恢复规则形状，物质点法不存在网格畸变问题。
+\end_layout
+
+\begin_layout Standard
+(4) 由于物质点携带了所有物质信息，因此物质点法可以自然的追踪材料界面，不存在对流项计算。
+\end_layout
+
+\begin_layout Standard
+虽然物质点法在传统网格类方法解决不好或无法解决的问题上展现了潜在的优势，但仍存在如下需要改进的地方：
+\end_layout
+
+\begin_layout Standard
+(1) 计算中涉及到背景网格与物质点之间的多重映射，增加了计算量。
+\end_layout
+
+\begin_layout Standard
+(2) 每步中的计算依赖于背景网格，规则的背景网格便于物质点搜索，但不利于准确模拟材料边界；不规则的背景网格将导致质点搜索量增加。
+\end_layout
+
+\begin_layout Standard
+(3) 质点穿越网格引起的噪音还没有得到彻底解决。
+\end_layout
+
+\begin_layout Standard
+物质点法仍在不断迅速发展中，如何进一步提高物质点法的求解精度，研究与其它方法（如高精度欧拉方法等）结合以发挥不同方法的优势，以及开展基于非结构化背景网格的物质点
+法研究，将是其重要的发展方向。
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "../ref/refs1-utf8"
+options "unsrt"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
