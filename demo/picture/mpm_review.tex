@@ -1,0 +1,347 @@
+%% LyX 2.0.2 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass{ctexart}
+\usepackage{amsmath}
+\usepackage{fontspec}
+\usepackage{geometry}
+\geometry{verbose,tmargin=2cm,bmargin=2cm,lmargin=2cm,rmargin=2cm}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{esint}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{subfigure}
+\usepackage[unicode=true,pdfusetitle,
+ bookmarks=true,bookmarksnumbered=false,bookmarksopen=false,
+ breaklinks=false,pdfborder={0 0 1},backref=false,colorlinks=false]
+ {hyperref}
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+%% A simple dot to overcome graphicx limitations
+\newcommand{\lyxdot}{.}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Textclass specific LaTeX commands.
+\newcommand{\lyxaddress}[1]{
+\par {\raggedright #1
+\vspace{1.4em}
+\noindent\par}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+%!TEX TS-program = xelatex
+
+\usepackage[super,square,comma,sort&compress]{natbib}
+
+\makeatother
+
+\usepackage{xunicode}
+\begin{document}
+
+\title{有限元课程论文}
+
+
+\author{康金梁，郑蕴哲，司马锲，吉首瑞}
+
+\maketitle
+
+\lyxaddress{\begin{center}
+(清华大学航天航空学院，北京100084)
+\par\end{center}}
+\begin{abstract}
+
+
+关键字：无网格法，物质点法，冲击侵彻，爆炸，特大变形
+
+\end{abstract}
+
+\section{引言}
+
+
+
+\section{STAPpp程序设计与实现}
+
+
+\subsection{前处理}
+
+\subsection{Bar单元}
+
+\subsection{4Q单元}
+
+\subsection{3T单元}
+
+\subsubsection{3T单元求解过程}
+
+3T-1求形函数N
+
+引入面积坐标对求3T单元很有效
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.3\textwidth,height=0.12\textheight]{1} 
+	\caption{面积坐标} 
+	\label{} 
+\end{figure}
+
+通过面积坐标的公式:
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.6\textwidth,height=0.12\textheight]{2} 
+	\caption{变换公式} 
+	\label{} 
+\end{figure}
+并且N=ξ
+得到B函数如下：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.6\textwidth,height=0.12\textheight]{3} 
+	\caption{B矩阵} 
+	\label{} 
+\end{figure}
+因此，通过公式可得到单元K矩阵：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.3\textwidth,height=0.04\textheight]{4} 
+	\caption{单元K矩阵} 
+	\label{} 
+\end{figure}
+
+3T-2外力矩阵
+
+集中力仍然不需要修改（未进行坐标变换）
+体作用力公式如下：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.19\textheight]{5} 
+	\caption{体作用力公式} 
+	\label{} 
+\end{figure}
+以及面作用力如下：（通过一点高斯积分获得）
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.19\textheight]{6} 
+	\caption{面作用力公式} 
+	\label{} 
+\end{figure}
+如此获得了单元刚度阵与外力阵
+
+
+3T-3组装
+
+按照事先划好的网格进行组装（LM阵已知）
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.4\textwidth,height=0.06\textheight]{7} 
+	\caption{组装公式} 
+	\label{} 
+\end{figure}
+
+
+3T-4求解
+
+最后通过矩阵的直接求解法（LDLT分解法）求解。
+反作用力由以下公式求出：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.4\textwidth,height=0.06\textheight]{8} 
+	\caption{反作用力公式} 
+	\label{} 
+\end{figure}
+
+位移可直接求出。
+通过位移，按照以下公式可得应变、应力：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.10\textheight]{9} 
+	\caption{应变应力公式} 
+	\label{} 
+\end{figure}
+
+按照以上思路完成3T cpp程序的写作。
+\subsubsection{Pacth test 与收敛性分析}
+
+Patch Test部分：
+
+通过单项给定的线性位移场进行：
+图形如下：（材料参数E=1000，v=0.3）
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.4\textwidth,height=0.24\textheight]{10} 
+	\caption{测试图形} 
+	\label{} 
+\end{figure}
+
+给定位移场为（单向拉伸）：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.4\textwidth,height=0.08\textheight]{11} 
+	\caption{线性位移} 
+	\label{} 
+\end{figure}
+输入参数设定顺时针，且固定左下点与左上x方向）：
+
+
+获得的位移结果为：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.10\textheight]{12} 
+	\caption{位移结果} 
+	\label{} 
+\end{figure}
+可见误差项为10-17量级，属于机器误差范围，因此模型通过了Patch test.
+故本程序是收敛的。
+
+收敛率分析部分
+
+对左下角固定的正方形材料进行拉伸:（E=1000,v=0.03）
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.18\textheight]{13} 
+	\caption{加密图形} 
+	\label{} 
+\end{figure}
+采取细分网格如图，单元给定线性位移场
+u=0.002x
+单向拉伸的正方形单元的收敛率分析：
+精确解的：普通单元的常数应变为：
+
+Ex=0.02
+
+Ey=Ez=-0.006
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.4\textwidth,height=0.05\textheight]{19} 
+	\caption{计算能量范数下误差公式} 
+
+\end{figure}
+
+a.2单元
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.16\textheight]{14} 
+	\caption{2单元应力数据} 
+	\label{} 
+\end{figure}
+
+得到应变为：
+
+element Ex	Ey	Ez
+
+[1]	0.01944	-0.00583	-0.00559
+
+[2]	0.02056	-0.00559	-0.00559
+
+ABS(e)=0.0328
+
+
+b.4单元
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.17\textheight]{15} 
+	\caption{4单元应力数据} 
+	\label{} 
+\end{figure}
+
+element Ex	Ey	Ez
+
+[1]	0.01924	-0.00577	0
+
+[2]	0.02	-0.00217	0.00762
+
+[4]	0.02076	0.001415	0
+
+[4]	0.02	-0.00217	-0.00762
+
+ABS(e)=0.0162
+
+c.8单元
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.22\textheight]{16} 
+	\caption{8单元应力数据} 
+	\label{} 
+\end{figure}
+
+element Ex	Ey	Ez
+
+[1]	V	-0.00548	0
+
+[2]	0.0183	-0.00548	0
+
+[3]	0.0217	-0.000758	0.000349
+
+[4]	0.0218	-0.00111	-0.00152
+
+[5]	0.0191	0.00152	-0.00378
+
+[6]	0.0191	0.00152	0.00378
+
+[7]	0.0218	-0.00111	0.00152
+
+[8]	0.0217	-0.000758	-0.000349
+
+ABS(e)=0.0090
+
+对结果进行线性拟合（e的对数）
+得到：
+
+P=1.11
+
+故最后该3T单元的收敛率为1.11，大于1因此收敛（通过Pacth Test已经收敛。）
+
+
+\subsubsection{本人所承担的小组任务}
+1. 3t单元的整合与调试
+
+2. 求解器优化，做了相关调研和前期准备，后续由于电脑故障无法进行交予组员
+
+3. 桥梁参数计算、拉索分散模型和后续文档
+
+
+\subsection{8H单元}
+
+\subsection{Beam单元}
+
+\subsection{Plate单元}
+
+\subsection{Shell单元}
+
+\subsection{IEM单元}
+
+\subsection{若干“巧凑”边点元}
+
+\subsection{求解器优化}
+
+\subsection{后处理}
+
+
+
+
+
+
+
+
+
+\section{桥梁设计、优化与评估}
+
+
+
+
+\section{结论}
+
+
+
+\bibliographystyle{unsrt}
+\bibliography{../ref/refs1-utf8}
+
+\end{document}

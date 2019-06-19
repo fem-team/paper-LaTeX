@@ -7,11 +7,14 @@
 \geometry{verbose,tmargin=2cm,bmargin=2cm,lmargin=2cm,rmargin=2cm}
 \usepackage{color}
 \usepackage{graphicx}
+\usepackage{bm}
 \usepackage{esint}
 \usepackage[unicode=true,pdfusetitle,
  bookmarks=true,bookmarksnumbered=false,bookmarksopen=false,
  breaklinks=false,pdfborder={0 0 1},backref=false,colorlinks=false]
  {hyperref}
+ 
+\usepackage{float}
 
 \makeatletter
 
@@ -49,38 +52,338 @@
 \lyxaddress{\begin{center}
 (清华大学航天航空学院，北京100084)
 \par\end{center}}
-\begin{abstract}
 
-\setcounter{MaxMatrixCols}{25}
-关键字：无网格法，物质点法，冲击侵彻，爆炸，特大变形
-
-\end{abstract}
 
 \section{引言}
 
+在本学期的有限元课程中，我们学习了有限元的相关知识。为了将所学知识应用于实际应用中，增强编程能力，同时满足课程的考核要求，我们以老师发布的STAPpp程序为基础，添加新的模块和功能，编写完成新版本的STAPpp程序。程序最后要求能够完成构建桥梁的有限元模拟。
 
+并且在课程对最后，应用我们所学知识，完成了桥梁竞赛，设计自己的满足条件的桥梁，并且通过STAPpp程序模拟，对桥梁设计进行优化，以在评估中取得更好的效果。
+
+在整个任务的完成过程中，离不开小组成员的付出，更离不开助教学长和老师的辛勤付出。感谢老师的悉心教导和学长加班加点的答疑与测试！
 
 \section{STAPpp程序设计与实现}
 
 
 \subsection{前处理}
 
+
+本次前处理采用Python3.7环境开发完成，调用了numpy数学库进行解析求解。
+考虑到本次stappp输入文件格式较为单一，而ABAQUS的inp文件中又由一系列关键字打头的instance组成，因此我们采用了较为简单的前处理设计思路。即编写一个解析器顺序读取inp文件中的各个关键字字头，再根据每一类关键字在解析器中定义一系列对应的类如node，material，elementgroup等来分别处理inp文件中的不同信息。
+我们在ABAQUSparser中定义了每个关键字对应类来读入数据再将数据传输到calculate文件中，完成单元的编号，节点的坐标旋转，合并，去重，材料截面转换等操作，再导入到outputter文件中以stappp要求格式进行输出。
+同时计算部分还可以由单元和节点数据和材料特性利用高斯积分计算体力，考虑到本次任务中重力以loadcase形式导入，该功能并没有起到作用。
+由于本次前处理结构思路较为简单，使得文件输出较为稳定，但也存在通用性不足的缺陷，当进行不同类型的转换时，需要补充定义更多关键词类，这给实际应用带来了较多困难。
+
 \subsection{Bar单元}
 
+对Bar单元的处理上，除了在前一阶段的作业中，添加了Gravity函数来计算单元自重外，其余代码基本和源代码保持一致。
+
 \subsection{4Q单元}
+
 4Q单元由于已经作为作业出现，故在此不再赘述。详情请查看源代码与郑蕴哲的4Q设计报告。
 
 \subsection{3T单元}
 
+\subsubsection{3T单元求解过程}
+
+3T-1求形函数N
+
+引入面积坐标对求3T单元很有效
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.3\textwidth,height=0.12\textheight]{picture/1} 
+	\caption{面积坐标} 
+	\label{} 
+\end{figure}
+
+通过面积坐标的公式:
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.6\textwidth,height=0.12\textheight]{picture/2} 
+	\caption{变换公式} 
+	\label{} 
+\end{figure}
+并且N=ξ
+得到B函数如下：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.6\textwidth,height=0.12\textheight]{picture/3} 
+	\caption{B矩阵} 
+	\label{} 
+\end{figure}
+因此，通过公式可得到单元K矩阵：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.3\textwidth,height=0.04\textheight]{picture/4} 
+	\caption{单元K矩阵} 
+	\label{} 
+\end{figure}
+
+3T-2外力矩阵
+
+集中力仍然不需要修改（未进行坐标变换）
+体作用力公式如下：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.19\textheight]{picture/5} 
+	\caption{体作用力公式} 
+	\label{} 
+\end{figure}
+以及面作用力如下：（通过一点高斯积分获得）
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.19\textheight]{picture/6} 
+	\caption{面作用力公式} 
+	\label{} 
+\end{figure}
+如此获得了单元刚度阵与外力阵
+
+
+3T-3组装
+
+按照事先划好的网格进行组装（LM阵已知）
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.4\textwidth,height=0.06\textheight]{picture/7} 
+	\caption{组装公式} 
+	\label{} 
+\end{figure}
+
+
+3T-4求解
+
+最后通过矩阵的直接求解法（LDLT分解法）求解。
+反作用力由以下公式求出：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.4\textwidth,height=0.06\textheight]{picture/8} 
+	\caption{反作用力公式} 
+	\label{} 
+\end{figure}
+
+位移可直接求出。
+通过位移，按照以下公式可得应变、应力：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.10\textheight]{picture/9} 
+	\caption{应变应力公式} 
+	\label{} 
+\end{figure}
+
+按照以上思路完成3T cpp程序的写作。
+\subsubsection{Pacth test 与收敛性分析}
+
+Patch Test部分：
+
+通过单项给定的线性位移场进行：
+图形如下：（材料参数E=1000，v=0.3）
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.4\textwidth,height=0.24\textheight]{picture/10} 
+	\caption{测试图形} 
+	\label{} 
+\end{figure}
+
+给定位移场为（单向拉伸）：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.4\textwidth,height=0.08\textheight]{picture/11} 
+	\caption{线性位移} 
+	\label{} 
+\end{figure}
+输入参数设定顺时针，且固定左下点与左上x方向）：
+
+
+获得的位移结果为：
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.10\textheight]{picture/12} 
+	\caption{位移结果} 
+	\label{} 
+\end{figure}
+可见误差项为10-17量级，属于机器误差范围，因此模型通过了Patch test.
+故本程序是收敛的。
+
+收敛率分析部分
+
+对左下角固定的正方形材料进行拉伸:（E=1000,v=0.03）
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.18\textheight]{picture/13} 
+	\caption{加密图形} 
+	\label{} 
+\end{figure}
+采取细分网格如图，单元给定线性位移场
+u=0.002x
+单向拉伸的正方形单元的收敛率分析：
+精确解的：普通单元的常数应变为：
+
+Ex=0.02
+
+Ey=Ez=-0.006
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.4\textwidth,height=0.05\textheight]{picture/19} 
+	\caption{计算能量范数下误差公式} 
+	
+\end{figure}
+
+a.2单元
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.16\textheight]{picture/14} 
+	\caption{2单元应力数据} 
+	\label{} 
+\end{figure}
+
+得到应变为：
+
+element Ex	Ey	Ez
+
+[1]	0.01944	-0.00583	-0.00559
+
+[2]	0.02056	-0.00559	-0.00559
+
+ABS(e)=0.0328
+
+
+b.4单元
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.17\textheight]{picture/15} 
+	\caption{4单元应力数据} 
+	\label{} 
+\end{figure}
+
+element Ex	Ey	Ez
+
+[1]	0.01924	-0.00577	0
+
+[2]	0.02	-0.00217	0.00762
+
+[4]	0.02076	0.001415	0
+
+[4]	0.02	-0.00217	-0.00762
+
+ABS(e)=0.0162
+
+c.8单元
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth,height=0.22\textheight]{picture/16} 
+	\caption{8单元应力数据} 
+	\label{} 
+\end{figure}
+
+element Ex	Ey	Ez
+
+[1]	V	-0.00548	0
+
+[2]	0.0183	-0.00548	0
+
+[3]	0.0217	-0.000758	0.000349
+
+[4]	0.0218	-0.00111	-0.00152
+
+[5]	0.0191	0.00152	-0.00378
+
+[6]	0.0191	0.00152	0.00378
+
+[7]	0.0218	-0.00111	0.00152
+
+[8]	0.0217	-0.000758	-0.000349
+
+ABS(e)=0.0090
+
+对结果进行线性拟合（e的对数）
+得到：
+
+P=1.11
+
+故最后该3T单元的收敛率为1.11，大于1因此收敛（通过Pacth Test已经收敛。）
+
 \subsection{8H单元}
 
+在8H单元的构建中，我们从高级单元的基本构造方法出发。考虑到8H单元是线性单元，我们在4Q单元的位移函数上拓展得到8H单元的位移函数，引入$ \psi,\eta,\zeta $作为母单元坐标，由于8H单元有24个自由度，我们在三维二阶完备多项式中去除三项平方项再加入一个三次项得到8H单元位移函数如下。
+\begin{align*}
+u &= \alpha_1+\alpha_2 \psi +\alpha_3 \eta +\alpha_4 \zeta +\alpha_5\psi \eta +\alpha_6  \eta \zeta + \alpha_7 \psi \zeta +\alpha_8 \psi \eta \zeta, \\
+v &= \alpha_9+\alpha_{10} \psi +\alpha_{11} \eta +\alpha_{12} \zeta +\alpha_{13} \psi \eta +\alpha_{14}  \eta \zeta + \alpha_{15} \psi \zeta +\alpha_{16} \psi \eta \zeta, \\
+w &= \alpha_{17}+\alpha_{18} \psi +\alpha_{19} \eta +\alpha_{20} \zeta +\alpha_{21}\psi \eta +\alpha_{22}  \eta \zeta + \alpha_{23} \psi \zeta +\alpha_{24} \psi \eta \zeta.
+\end{align*}
+
+随后，由以下形式的形函数进行插值：
+\begin{equation*}
+N_i=\frac{1}{8}(1+\psi_i \psi)(1+\eta_i \eta)(1+\zeta_i \zeta), \ i=1,2,...,8.
+\end{equation*}
+继而由
+\begin{equation*}
+B_i={\nabla}_sN_i
+\end{equation*}
+得到应变矩阵
+\begin{equation*}
+B_i=\left( \begin{array}{cccc}
+\frac{\partial N_i}{\partial x} & 0 & 0 \\
+0 & \frac{\partial N_i}{\partial y} & 0\\
+0 & 0& \frac{\partial N_i}{\partial z} \\
+\frac{\partial N_i}{\partial y} &\frac{\partial N_i}{\partial x} & 0\\
+0 & \frac{\partial N_i}{\partial z} & \frac{\partial N_i}{\partial y}\\
+\frac{\partial N_i}{\partial z} & 0& \frac{\partial N_i}{\partial x}\end{array} \right).
+\end{equation*}
+其中，$B=[B_1 \; B_2 \; B_3 \; B_4 \; B_5 \; B_6 \; B_7 \; B_8]$。
+再通过Jacobi矩阵将形函数映射到物理坐标系中得到单元刚度阵：
+\begin{equation*}
+K^e=\int^1_{-1} \int^1_{-1} \int^1_{-1} B^T D B|J|d\psi d\eta d\zeta.
+\end{equation*}
+最后组装得到总体刚度阵，得到系统方程。
+为了验证所构造的8H单元，我们采用一个线性场的分片试验进行test C。由于线性位移场实质上只包括常正应变与常剪应变两种情形，因此我们下面分别构造了单轴拉伸与纯剪载荷的算例进行验证。分片试验由7个单元组成，单元划分方式如图\ref{fig:8H-sketch}所示。
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=3.0 in]{picture/8H+sketch.eps}
+	\caption{分片试验单元划分示意图}\label{fig:8H-sketch}
+\end{figure}
+
+\begin{figure}[!htbp]
+	\centering
+	\subfigure[单轴拉伸]{
+		\label{fig:8H-1}
+		\includegraphics[width=2.2 in]{picture/8H-1.eps}}
+	\subfigure[纯剪载荷]{
+		\label{fig:8H-3}
+		\includegraphics[width=2.0 in]{picture/8H-3.eps}}
+	\caption{分片试验载荷与约束示意图}
+	\label{fig:8H-1,3}
+\end{figure}
+首先是单轴拉伸的分片试验，施加如图\ref{fig:8H-1}所示的载荷。相应的位移场精确解应为：
+\begin{align*}
+u_x &= -\nu \frac{4P}{E l_z l_x}x, \\
+u_y &= -\nu \frac{4P}{E l_z l_y}y, \\
+u_z &= \frac{4P}{E l_z^2}z.
+\end{align*}
+与图\ref{fig:8H-2}所示的计算值对比，可以看到符合得很好，这说明所构造的8H单元具有至少二阶精度。实际上，由理论分析易知，8H单元确实只具有二阶精度。
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=4.0 in]{picture/8H-2.eps}
+	\caption{单轴拉伸位移场计算结果}\label{fig:8H-2}
+\end{figure}
+考虑到分片试验是单轴拉伸，再构造一个纯剪的算例，加载方式如图\ref{fig:8H-3}所示。进而得到了如图\ref{fig:8H-4}所示的计算结果，这一结果与理论解符合得很好。这里的8H单元使用的是应力平滑(即Gauss点的应力外推)后的应力。
+\begin{figure}[!htbp]
+	\centering
+	\includegraphics[width=4.0 in]{picture/8H-4.eps}
+	\caption{纯剪载荷位移场计算结果}\label{fig:8H-4}
+\end{figure}
+
+
 \subsection{Beam单元}
+
 由于Beam单元与Bar单元十分类似，因此在Beam单元实现的过程中很多地方都借鉴了Bar单元的思路和细节。
 
 首先Beam的刚度阵如下图所示
 \begin{figure}[h]%%图
 	\centering  %插入的图片居中表示
-	\includegraphics[width=0.7\linewidth]{figure/BeamStiff}  %插入的图，包括JPG,PNG,PDF,EPS等，放在源文件目录下
+	\includegraphics[width=0.7\linewidth]{picture/BeamStiff}  %插入的图，包括JPG,PNG,PDF,EPS等，放在源文件目录下
 	\caption{Beam刚度阵}  %图片的名称
 	\label{figureBeam}
 	
@@ -100,13 +403,230 @@ F_{x1}&		F_{y1}&		F_{z1}&		M_{x1}&		M_{y1}&		M_{z1}&		F_{x2}&		F_{y2}&		F_{z2}&	
 
 \subsection{Plate单元}
 
+\subsubsection{单元设计思路}
+
+plate 单元是一种一个方向的尺度远小于另外两个方向尺度的单元。在本STAPpp程序设计中，采用了薄板假设，即Kirchoff-love理论，包含平截面假设和中性面垂直假设。根据以上假设，我们可以得到平板弯曲的结果，
+\[ 
+\bm{\varepsilon} = 
+\begin{Bmatrix}
+\varepsilon_x\\
+\varepsilon_y\\
+\gamma_{xy}
+\end{Bmatrix} 
+=z
+\begin{Bmatrix}
+-\frac{\partial^2 w}{\partial x^2}\\
+-\frac{\partial^2 w}{\partial y^2}\\
+-2\frac{\partial^2 w}{\partial x \partial y}
+\end{Bmatrix}
+=z\bm{L}w
+=z\bm{\kappa}
+\]
+其中，矩阵$\bm{L}$为，\[ \bm{L}=\begin{Bmatrix}
+-\frac{\partial^2 w}{\partial x^2}\\
+-\frac{\partial^2 w}{\partial y^2}\\
+-2\frac{\partial^2 w}{\partial x \partial y}
+\end{Bmatrix} \]
+
+然后，因为平板单元含有四个节点，共有十二个方程，所以我们取帕斯卡三角形中前十二项，得到$ w $的表达式，代入后，得到$ \bm{L}  $的表达式为，
+\[ \bm{L}w=
+\begin{Bmatrix}
+2\alpha_4 + 6\alpha_7x+2\alpha_8y+6\alpha_11xy\\
+2\alpha_6+2\alpha_9x+6\alpha_10y+6\alpha_12xy\\
+2\alpha_5+4\alpha_8x+4\alpha_9y+6\alpha_11x^2+6\alpha_12y^2
+\end{Bmatrix}
+ \]
+ 且\[ \bm{L}w=\bm{Q\alpha}^e=\bm{QM}^{-1}\bm{d}^e \]
+ 则可以得到矩阵$ \bm{Q} $的表达式为，
+\begin{equation}       %开始数学环境
+\bm{Q}=
+\left[                %左括号
+\begin{array}{cccccccccccc}   %该矩阵一共3列，每一列都居中放置
+0 &0 & 0& 2& 0& 0& 6x& 2y& 0 &0 &6xy &0\\ 
+0 &0 & 0& 0& 0& 2& 0& 0 &2x &6y &0 &6xy \\
+0 &0 & 0&0 &2 &0 &0 &4x& 4y &0 &6x^2& 6y^2
+\end{array}
+\right]                 %右括号
+\end{equation}
+这样我们就可以得到单元刚度阵的积分表达式，为
+\[ \bm{K}^e=\int_{\Omega^e} \bm{B}^{\mathsf{T}} \bm{DB}dxdy = \bm{M}^{-\mathsf{T}}(\int_{\Omega^e} \bm{Q}^{\mathsf{T}} \bm{DQ}dxdy) \bm{M}^{-1} \]
+
+同理，我们可以按照和之前类似的组装方式得到系统刚度阵和系统的应力矩阵，然后代入总的方程求解，即可得出相应的位移场结果。
+
+接下来较为重要和难以处理的是自由度问题。严格来讲，三维问题每个节点应有六个自由度，分别为三个平动自由度和三个转动自由度。但是由于plate单元中不存在围绕z轴的转动，从而第三个转动自由度是不存在的，所以每个节点应该开放五个自由度。然而考虑到嵌入STAPpp程序的需要，同意默认只开放三个平动自由度，在随后从前处理文件中读取节点信息时，再将两个转动自由度打开。
+
+\subsubsection{程序实现}
+但是在程序实现的过程中，我们发现，像之前单元一样利用MATLAB计算单元刚度阵解析表达式的方法已经不再适用。原因是$ \bm{M} $过于复杂，无法在可期的时间内求出其逆的解析表达式。针对这点问题，在接下来的两个星期内，我提出了三种算法。
+
+\textbf{算法一}
+
+考虑到无法求得解析表达式，我们采用数值积分的方法求出每一个单元的数值的刚度矩阵。为了尽可能地提高运算速度，降低不能求解解析表达式所带来的计算复杂度，我们在STAPpp程序中添加了“InverseMatrix”类，用于矩阵求逆。该算法利用主元的Gauss方法求解矩阵逆的数值解。
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.85\textwidth]{picture/suanfayi} 
+	\caption{第一种算法} 
+	\label{metis_dataflaw} 
+\end{figure}
+
+但是在完成后的验证过程中，我们发现，随着求解规模的不断增大，不断进行求逆所消耗的时间也大大增加，严重降低了程序的效率。所以在此基础上，我们编写了第二种算法。
+
+\textbf{算法二}
+
+通过查阅资料，我们发现了一种可以绕过求解矩阵$ \bm{M} $的逆的方法。该方法的核心思想和之前4Q单元类似，通过坐标变换引入$ \xi , \eta $坐标，然后给出相应的$ \bm{N} $矩阵的表达式，通过对$ \bm{N} $矩阵进行二阶求导，从而得出单元刚度阵的解析表达式。主要的计算过程如下，
+
+形函数矩阵
+\[ 
+\bm{N}=
+\begin{bmatrix}
+N_1 & ... & N_{yn}\\
+\frac{\partial N_1}{\partial y} & ... & \frac{\partial N_{yn}}{\partial y}\\
+\frac{\partial N_1}{\partial x} & ... & \frac{\partial N_{yn}}{\partial x}
+\end{bmatrix}
+ \]
+ 
+其中形函数的表达式为，
+\[ 
+N_i=\frac{1}{8}(1+\xi_i\xi)(1+\eta_i\eta)(2+\xi_i\xi+\eta_i\eta-\xi^2-\eta^2)
+\]
+\[ N_{xi}=-\frac{1}{8}b\eta_i(1+\xi_i\xi)(1+\eta_i\eta)(1-\eta^2) \]
+\[ N_{yi}=\frac{1}{8}a\eta_i(1+\xi_i\xi)(1+\eta_i\eta)(1-\xi^2)\]
+
+这样，通过对$ \bm{N} $ 矩阵求二阶导，可以得到矩阵$ \bm{B} $的表达式，代入积分中，即可求得单元刚度阵的解析表达式。
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.85\textwidth]{picture/suanfaer} 
+	\caption{第二种算法} 
+	\label{metis_dataflaw} 
+\end{figure}
+
+
+我们可以发现，4Q单元算法之所以能够对任意的（凸四边形）单元成立，主要原因就是引入了坐标变换。那么，将左边变换引入plate单元后，plate单元算法能否和4Q单元一样，可以适用于任意形状的plate单元呢？在进行数学推导后，我们发现，原本在变换求导过程中出现的系数在后面逆变换中得到了抵消，简单地从推导过程中看，是可以应用到任意四边形状的plate单元中的。但是在之后的patch test中，我们发现，对于特定形状的plate单元，计算结果出现“NAN”的情况。分析其原因，可能是因为坐标变换的雅克比矩阵并非常数，甚至连多项式都不是，程序无法正确计算。于是我推出了第三种算法。
+
+\textbf{算法三}
+
+第三种算法主要基于第二种算法，保留了矩阵求逆的解析解，保证了程序的运算效率。同时，不再追求能够求解任意的四边形plate单元，仅仅针对标准矩形单元和十分规则的平行四边形单元。经过验证，满足了STAPpp程序要求，可以用于实际求解中。
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.85\textwidth]{picture/suanfasan} 
+	\caption{最终算法cpp文件结构} 
+	\label{metis_dataflaw} 
+\end{figure}
+
+
+
+\subsubsection{patch test 及收敛性分析}
+
+之后，我们对最终版本的plate单元进行了patch test。
+较为复杂的patch test采用了四乘四共计十六个单元，如下图所示，
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.3\textwidth]{picture/platepatch} 
+	\caption{plate单元patch test} 
+	\label{metis_dataflaw} 
+\end{figure}
+
+得到结果为，
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth]{picture/platepatch2} 
+	\caption{plate单元patch test结果} 
+	\label{metis_dataflaw} 
+\end{figure}
+
+在机器精度上和准确解完全符合，可以认为plate单元通过了patch test，是收敛的。
+
+接下来是进行收敛性分析。考虑到plate单元实际上只能在单元平面外产生变形，所以设计的检验模型为在z方向施加体力，使得位移场呈现正弦函数型。然后分别对一个单元、四个单元和十六个单元计算，画出基于L2范数的误差和分片大小的对数坐标图，并且进行线性函数拟合，得到的结果如下，
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth]{picture/plateshoulian} 
+	\caption{plate单元收敛率分析} 
+	\label{metis_dataflaw} 
+\end{figure}
+
+为了便于拟合等操作，误差值进行了等倍数放大。可以看到，直线斜率约为3，考虑到随着patch数的增加，收敛效果会变好，所以基本满足收敛性分析要求。
+
 \subsection{Shell单元}
+
+由于我们组有同学退课，所以在开始的两个星期没有写shell单元。在发现程序运行中，如果将4Q单元和Plate单元用指针链接，拼接成为Shell单元时，指针报错，所以临时补写了Shell单元。
+
+实际shell单元的编写思路为4Q+Plate单元，但不是简单地链接合并。分别计算出中性面在平面内的位移和垂直于平面方向的位移，然后根据壳单元的厚度，得出上下两个面上节点的位移。同样为了避免求逆，参考了资料上的形函数，类似于Plate单元，得出最终结果。由于具体过程类似，本文不再赘述。
+
+之后是对Shell单元进行分片实验，分片和Plate类似，都是有16个单元，但是不同的是增加了面内的变形和一些转角的自由度约束。如下图所示，
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.3\textwidth]{picture/shellpatch} 
+	\caption{shell单元patch test} 
+	\label{metis_dataflaw} 
+\end{figure}
+
+程序运行得到的结果如下，
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.6\textwidth]{picture/shellpatch2} 
+	\caption{shell单元patch test结果} 
+	\label{metis_dataflaw} 
+\end{figure}
+
+在机器精度下，可以认为已经通过patchtest，单元收敛。事实上，在进行桥梁计算时，也用到了shell单元，在和ABAQUS的比较中，也可以发现，该单元基本满足收敛性要求。
 
 \subsection{IEM单元}
 
+IEM单元，是STAPpp程序的一个扩展单元。IEM，是“无限元”的英文简称。该单元，主要用于解决无限大平板的有限元计算问题。
+
+该单元的设计思路较为简单，主要按照有限元课堂上所讲的内容。例如，若在$ x $方向趋于无穷，则对$ x $建立映射，\[ \xi = 1-\frac{x_Q-x_C}{x-x_C}=1-
+\frac{x_Q-x_C}{r} \]
+
+则，当$ \xi $趋于-1时，x在物理单元中取$ x_P $;当$ \xi=0 $时，x在物理空间中取$ x_Q $;当$ \xi=1 $时，$ x $趋于正无穷。其对应的物理单元和母空间中的单元如下图所示，
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.6\textwidth]{picture/IEMwuli} 
+	\caption{IEM物理空间中的单元} 
+	\label{metis_dataflaw} 
+\end{figure}
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.4\textwidth]{picture/IEMmudanyuan} 
+	\caption{IEM对应的母单元} 
+	\label{metis_dataflaw} 
+\end{figure}
+
+但是，由于物理空间中的无限性，显然不可能求出对应节点的位移和应力，只能将对应高斯点的位移和应力求出，通过逆变换回代入物理空间中，得到结果。除了映射有所不同，所取的近似函数有差别外，母空间中问题的方程的建立和求解均和4Q单元相同。
+
+接下来一个较为重要的问题就是如何做IEM单元的patch test和定义收敛率的问题。由于我们并没有找到很好的办法去证明某种patch test的有效性，在查阅一些文献的时候也没有找到统一的明确的定义，所以在这个问题中，我们认为按以上步骤构造的IEM单元在对应的4Q单元的意义下是否通过patch test可以视为IEM单元本身是否能通过patch test。所以我们认为这样的IEM单元是收敛的，尽管收敛率可能比对应的4Q单元收敛率较低。而在随后对算例的求解中也能够得到较为合理的结果。
+
 \subsection{若干“巧凑”边点元}
 
+这里的若干“巧凑”单元主要指从5Q到9Q的若干由“Serendipity”方法构造出来的单元。“Serendipity”方法，即在继承4Q单元四个角点的形函数后，针对位于单元边中点或者整个形状中心点，利用形函数在其他点值为零，在对应点值为一的特性，用因式相乘，最后乘上某一系数做归一化的方法，构造其他点的形函数。下图为8Q单元构造形函数的对应方法。
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.6\textwidth]{picture/serendipity1} 
+	\caption{用Serendipity方法构造8Q单元形函数} 
+	\label{metis_dataflaw} 
+\end{figure}
+所有serendipity单元程序的具体书写，通过一种“程式化”的方式进行“批量生产”。首先通过在2D弹性问题的基础上改变来的Matlab程序，得出单元的刚度阵的解析表达式，通过cout等函数输出为C++程序可以读入的形式，并同时利用MATLAB处理，得出计算所需要的中间变量，以加快计算速度。然后通过另外编写的C++程序，以文本方式读入读出MATLAB结果，生成完全符合C++语法的程序文本，然后贴入STAPpp程序中，修改其他头文件和output格式后，即可完成在STAPpp程序中添加对应的Serendipity单元模块。
+
+在patch test方面，主要通过对应的Serendipity单元的拼接来实现patch test。以5Q单元和9Q单元为例，如下图所示，
+
+\begin{figure}[H] 
+	\centering 
+	\includegraphics[width=0.8\textwidth]{picture/serendipity2} 
+	\caption{用Serendipity方法构造5Q单元patch test} 
+	\label{metis_dataflaw} 
+\end{figure}
+
+其数值计算解在机器精度上和理论解相同，可以认为通过patch test。在收敛性测试上，其收敛率和对应的4Q单元基本一致（由于单元数量较多的网格较难设计，而且没种不能保证结果一样，所以曲线拟合点数量较少）。
 \subsection{求解器优化}
+
+为优化计算，提高运算速度，我们在原有LDLT求解器的基础上导入了Intel-mkl库中的pardiso稀疏矩阵求解器。同原有LDLT求解器基于skyline矩阵存储格式一样，pardiso稀疏矩阵求解器基于CSR稀疏矩阵压缩存储格式，我们在原有的程序基础上，模仿skyline格式的结构，对应地编写了CSR格式的CSRMatrix：Element，CSRMatrix：Getdignoaladdress等类来将输入数据转化为CSR格式并进行对应计算。并将CSR相关类用ifdef标注，这样可以在cmake步骤中选择不同宏定义来选择LDLT和稀疏矩阵求解两种求解模式。
 
 \subsection{后处理}
 
@@ -119,16 +639,17 @@ F_{x1}&		F_{y1}&		F_{z1}&		M_{x1}&		M_{y1}&		M_{z1}&		F_{x2}&		F_{y2}&		F_{z2}&	
 \begin{figure}[h]
 	\begin{minipage}[t]{0.5\linewidth}
 		\centering
-		\includegraphics[width=\linewidth ]{figure/PostProcess}
+		\includegraphics[width=\linewidth ]{picture/PostProcess}
 		\caption{tecplot后处理}
 	\end{minipage}%
 	\hfill
 	\begin{minipage}[t]{0.5\linewidth}
 		\centering
-		\includegraphics[width=\linewidth]{figure/PostProcess1}
+		\includegraphics[width=\linewidth]{picture/PostProcess1}
 		\caption{abaqus后处理}
 	\end{minipage}
 \end{figure}
+
 
 
 
@@ -146,7 +667,7 @@ F_{x1}&		F_{y1}&		F_{z1}&		M_{x1}&		M_{y1}&		M_{z1}&		F_{x2}&		F_{y2}&		F_{z2}&	
 
 \begin{figure}[h]%%图
 	\centering  %插入的图片居中表示
-	\includegraphics[width=\linewidth]{figure/STbridge}  %插入的图，包括JPG,PNG,PDF,EPS等，放在源文件目录下
+	\includegraphics[width=\linewidth]{picture/STbridge}  %插入的图，包括JPG,PNG,PDF,EPS等，放在源文件目录下
 	\caption{苏通长江大桥}  %图片的名称
 	
 \end{figure}
@@ -180,20 +701,20 @@ F_{x1}&		F_{y1}&		F_{z1}&		M_{x1}&		M_{y1}&		M_{z1}&		F_{x2}&		F_{y2}&		F_{z2}&	
 
 \begin{figure}[h]%%图
 	\centering  %插入的图片居中表示
-	\includegraphics[width=\linewidth]{figure/Youhua}  %插入的图，包括JPG,PNG,PDF,EPS等，放在源文件目录下
+	\includegraphics[width=\linewidth]{picture/Youhua}  %插入的图，包括JPG,PNG,PDF,EPS等，放在源文件目录下
 	\caption{桥面中段额外钢索}  %图片的名称
 \end{figure}
 
 \begin{figure}[h]
 	\begin{minipage}[t]{0.5\linewidth}
 		\centering
-		\includegraphics[width=\linewidth ]{figure/Youhua4}
+		\includegraphics[width=\linewidth ]{picture/Youhua4}
 		\caption{同材料优化后最大位移}
 	\end{minipage}%
 	\hfill
 	\begin{minipage}[t]{0.5\linewidth}
 		\centering
-		\includegraphics[width=\linewidth]{figure/Youhua3}
+		\includegraphics[width=\linewidth]{picture/Youhua3}
 		\caption{优化前最大位移}
 	\end{minipage}
 \end{figure}
@@ -207,29 +728,27 @@ F_{x1}&		F_{y1}&		F_{z1}&		M_{x1}&		M_{y1}&		M_{z1}&		F_{x2}&		F_{y2}&		F_{z2}&	
 
 \begin{figure}[h]%%图
 	\centering  %插入的图片居中表示
-	\includegraphics[width=\linewidth]{figure/Youhua4}  %插入的图，包括JPG,PNG,PDF,EPS等，放在源文件目录下
+	\includegraphics[width=\linewidth]{picture/Youhua4}  %插入的图，包括JPG,PNG,PDF,EPS等，放在源文件目录下
 	\caption{最大桥面位移}  %图片的名称
 \end{figure}
 \begin{figure}[h]
 	\begin{minipage}[t]{0.5\linewidth}
 		\centering
-		\includegraphics[width=\linewidth ]{figure/Result1}
+		\includegraphics[width=\linewidth ]{picture/Result1}
 		\caption{混凝土应力情况}
 	\end{minipage}%
 	\hfill
 	\begin{minipage}[t]{0.5\linewidth}
 		\centering
-		\includegraphics[width=\linewidth]{figure/Result2}
+		\includegraphics[width=\linewidth]{picture/Result2}
 		\caption{钢索应力情况}
 	\end{minipage}
 \end{figure}
 
+\section{结束语}
 
-\section{结论}
+程序的功能还有很多不完善的地方。例如，到底如何才能做到用Plate单元计算任意形状四边形单元？如何进一步提高单元的收敛率和程序的运行效率？……我们希望能在接下来在今后的学习和科研中国，尽可能探究，并对程序进行进一步的完善。
 
-
-
-\bibliographystyle{unsrt}
-\bibliography{../ref/refs1-utf8}
+在本文的末尾，再次感谢老师的教导和学长的辛苦付出！
 
 \end{document}
